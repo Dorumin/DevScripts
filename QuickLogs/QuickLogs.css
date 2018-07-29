@@ -1,0 +1,44 @@
+.quicklogs__content-sub {
+    padding: 10px 10px 0;
+}
+ 
+#contentSub .link {
+    text-decoration: line-through;
+}
+ 
+.quicklogs, #quicklogs-ul a {
+    cursor: pointer;
+}
+
+#quicklogs-ul b {
+    font-weight: bold;
+}
+ 
+.quicklogs.selected {
+    color: inherit;
+    font-weight: bold;
+    cursor: default;
+}
+ 
+.quicklogs.selected:hover {
+    text-decoration: none;
+}
+ 
+#quicklogs-ul {
+    border: 1px solid rgb(204, 204, 204);
+    padding: 10px;
+    overflow-y: auto;
+    max-height: 300px;
+    margin: 10px 0
+}
+ 
+#quicklogs-head {
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+ 
+#quicklogs-container ul {
+    list-style-type: square;
+    margin-left: 20px;
+    font-size: 13px;
+}

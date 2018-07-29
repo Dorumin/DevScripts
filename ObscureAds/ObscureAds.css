@@ -1,0 +1,12 @@
+#WikiaTopAds,
+#top-right-boxad-wrapper,
+#WikiaArticleBottomAd,
+#WikiaAdInContentPlaceHolder,
+.WikiaAdInContent,
+.wikia-ad,
+.home-top-right-ads,
+div[id^="br_video_player_"],
+.FIOnDemandWrapper,
+#mixed-content-footer {
+    opacity: .5;
+}

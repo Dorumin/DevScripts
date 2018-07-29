@@ -1,0 +1,11 @@
+#AjaxBlockReasonInput, #AjaxUnblockReasonInput, #AjaxBlockExpiryInput {
+    width: 90%;
+}
+ 
+#AaxBlockReasonSelect, #AjaxBlockExpirySelect {
+    margin-left: 5px;
+}
+ 
+.AjaxBlockExpiryWrapper, .AjaxBlockReasonWrapper {
+    margin-bottom: 5px;
+}

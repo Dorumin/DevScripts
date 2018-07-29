@@ -1,0 +1,20 @@
+body.is-typing .Chat {
+    margin-bottom: 20px;
+}
+body.is-typing .typing-indicator {
+    display: block;
+}
+.typing-indicator {
+    display: none;
+    left: 5px;
+    line-height: 25px;
+    position: absolute;
+    right: 5px;
+    top: -25px;
+}
+.typing-indicator .username {
+    font-weight: bold;
+}
+body.warn .typing-indicator {
+    top: -45px;
+}

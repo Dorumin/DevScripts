@@ -1,0 +1,94 @@
+.dm-modal-ajax {
+    display: block;
+    margin: 30px auto;
+}
+ 
+#dm-editor-skip {
+    float: right;
+}
+ 
+#dm-button {
+    cursor: pointer;
+}
+ 
+.state-indicator {
+    float: left;
+}
+ 
+.dm-context {
+    border-color: #e6e6e6;
+    background-color: #f9f9f9;
+    color: #333333;
+}
+ 
+.dm-main-line {
+    border-color: #a3d3ff;
+    background-color: #fff;
+    color: #252525;
+}
+ 
+.dm-line {
+    font-size: 88%;
+    line-height: 1.6;
+    vertical-align: top;
+    white-space: pre-wrap;
+    border-style: solid;
+    border-width: 1px 1px 1px 4px;
+    border-radius: 0.33em;
+    padding: 0.33em 0.5em;
+    margin: .2em 0;
+}
+ 
+.dm-disambig-link {
+    color: crimson;
+    padding: 2px 0;
+}
+ 
+.dm-loading {
+    opacity: .5;
+}
+ 
+.alternative-picker {
+    position: absolute;
+    margin: .3em;
+    border-radius: 5px;
+    padding: 5px;
+    box-shadow: 3px 3px 6px 0 #001020;
+}
+ 
+.dm-picker-option, .custom-disambig-wrapper {
+    padding: 4px 9px;
+}
+ 
+.custom-disambig-input {
+    width: 100%;
+}
+ 
+.dm-solved-disambig-link {
+    background-color: #d8ecff;
+    font-weight: bold;
+    padding: 2px 0;
+}
+ 
+#dm-modal .modalToolbar {
+    display: flex; /* How the hell does the ace editor support grids but not flex??? */
+}
+ 
+.state-indicator {
+    flex: auto; /* see above comment */
+    text-align: left;
+}
+ 
+#dm-summary-input {
+    display: block;
+    width: 90%;
+}
+ 
+#dm-modal-ajax {
+    display: block;
+    margin: 30px auto;
+}
+ 
+html body .ui-autocomplete {
+    z-index: 123456789 !important;
+}

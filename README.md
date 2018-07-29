@@ -1,0 +1,1 @@
+This is a collection of most of the Wikia Developers plugins I have worked on along the years. Most probably won't be up to date with the latest revisions available over there.

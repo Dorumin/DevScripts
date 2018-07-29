@@ -1,0 +1,65 @@
+/*
+ * IRC Themed Chat w/ Rail
+ * Changes the chat look to look similar to an IRC
+ * @author Dorumin
+ * [[w:c:dev:IRCThemedChat]]
+ */
+ 
+/* Start of Rail modifcations */
+.Rail .User img {
+    display:none;
+}
+ 
+.Rail .username {
+    display: inline-block;
+    margin-right: 0;
+    width: 150px;
+}
+ 
+.Rail .User {
+    min-height: 0;
+    padding-left: 0;
+    padding: 0;
+}
+ 
+.Rail .chatmoderator .username::before {
+    content: "+";
+    color: inherit;
+    font-weight: bold; /* To differentiate from names starting with + */
+}
+ 
+#Rail .away {
+    color: inherit;
+}
+ 
+.User .username::after {
+    position: relative;
+    right: 0;
+    top: 0;
+}
+ 
+#Rail .away .username {
+    font-style: italic;
+}
+ 
+#Rail .away .username::after {
+    content: " away" !important;
+    font-style: italic;
+    left: 2px;
+}
+ 
+#Rail .chat-mod .username::after, #Rail .staff .username::after {
+    background-image: none !important;
+}
+ 
+#WikiChatList {
+    overflow-x: hidden !important;
+}
+ 
+#PrivateChatList {
+    overflow-x: hidden !important;
+}
+ 
+#Rail .details, #Rail .badge {
+    display: none;
+}

@@ -8,7 +8,8 @@
 
 (function() {
     if (
-        mw.config.get('wgCanonicalSpecialPageName') != 'Chat' 
+        mw.config.get('wgCanonicalSpecialPageName') != 'Chat' ||
+        (window.ChatSyntaxHighlight && window.ChatSyntaxHighlight.init)
     ) return;
 
     var amd = define.amd,
@@ -21,7 +22,8 @@
             js: 'javascript',
             //java: 'javascript',
             'c++': 'cpp',
-            cplusplus: 'cpp'
+            cplusplus: 'cpp',
+            'objective-c': 'objectivec'
         },
         extraLanguages: [],
         _preload: 0,
@@ -67,13 +69,16 @@
             _lang = lines[0];
 
             if (this.aliases[_lang]) _lang = this.aliases[_lang];
-            if (lines.length > 1 && this.languages.indexOf(_lang) != -1) language = lines.shift();
+            if (lines.length > 1 && this.languages.indexOf(_lang.toLowerCase()) != -1) language = lines.shift().toLowerCase();
 
             var pre = document.createElement('pre');
             var code = document.createElement('code');
             pre.className = 'hljs-pre';
             code.className = language;
             code.textContent = lines.join('\n');
+            if (language !== 'nohighlight hljs') {
+                pre.setAttribute('data-lang', language);
+            }
 
             pre.appendChild(code);
             hljs.highlightBlock(code);
@@ -94,6 +99,11 @@
     importArticle({
         type: 'script',
         article: 'u:dev:MediaWiki:Chat-js.js'
+    });
+
+    importArticle({
+        type: 'style',
+        article: 'u:dev:MediaWiki:ChatSyntaxHighlight.css'
     });
 
     define.amd = null;

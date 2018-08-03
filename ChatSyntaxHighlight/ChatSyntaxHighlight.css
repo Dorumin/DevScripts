@@ -1,3 +1,16 @@
+.hljs-pre[data-lang]:after {
+    content: attr(data-lang);
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: transparent;
+    margin: 5px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    border-width: 1px;
+    border-style: solid;
+}
+
 .hljs-pre {
-    padding: 4px;
+    position: relative;
 }

@@ -15,7 +15,8 @@
     var amd = define.amd,
     ChatSyntaxHighlight = $.extend({
         mobile: true,
-        highlightRegexp: /```([\s\S]*)```/g,
+        index: 0,
+        highlightRegexp: /```([\s\S]*?)```/g,
         languages: [],
         theme: 'default',
         aliases: {
@@ -57,19 +58,26 @@
             var message = document.querySelector('#entry-' + model.cid + ' .message');
 
             if (message && this.highlightRegexp.test(message.innerHTML)) {
-                this.performReplacements(message);
+                this.performReplacements(message, model);
             }
         },
-        performReplacements: function(message) {            
-            message.innerHTML = message.innerHTML.replace(this.highlightRegexp, this.replaceFunction.bind(this));
+        performReplacements: function(message, model) {
+            this.index = 0;
+            var matches = model.attributes.text.match(this.highlightRegexp).map(function(str) {
+                return str.slice(3, -3);
+            });
+            message.innerHTML = message.innerHTML.replace(this.highlightRegexp, this.replaceFunction.bind(this, matches));
         },
-        replaceFunction: function(_, capt1) {
-            var lines = capt1.split('\n'),
+        replaceFunction: function(matches) {
+            var lines = matches[this.index++].split('\n'),
             language = 'nohighlight hljs',
-            _lang = lines[0];
+            _lang = lines[0].toLowerCase();
 
             if (this.aliases[_lang]) _lang = this.aliases[_lang];
-            if (lines.length > 1 && this.languages.indexOf(_lang.toLowerCase()) != -1) language = lines.shift().toLowerCase();
+            if (lines.length > 1 && this.languages.indexOf(_lang) != -1) {
+                lines.shift();
+                language = _lang;
+            }
 
             var pre = document.createElement('pre');
             var code = document.createElement('code');
@@ -85,14 +93,24 @@
 
             return pre.outerHTML;
         },
+        onInput: function(e) {
+            var matches = e.target.value.match(/```[\s\S]*?(```|$)/g),
+            isWritingCodeBlock = matches && matches[matches.length - 1].slice(-3) != '```';
+            if (!isWritingCodeBlock) mainRoom.sendMessage(e);
+        },
         init: function() {
-            if (!define.amd) {
+            if (!define.amd && amd) {
                 define.amd = amd;
             }
             this.languages = hljs.listLanguages();
             this.bindToAllMessages(this.afterMessage.bind(this));
         }
     }, window.ChatSyntaxHighlight);
+
+    // Take over input handling
+    mainRoom.viewDiscussion
+        .unbind('sendMessage')
+        .bind('sendMessage', ChatSyntaxHighlight.onInput);
 
     window.ChatSyntaxHighlight = ChatSyntaxHighlight;
 

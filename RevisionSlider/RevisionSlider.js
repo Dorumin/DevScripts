@@ -20,7 +20,7 @@
         config.init
     ) return;
 
-    var RevisionSlider = $.extend({
+    RevisionSlider = $.extend({
         _loads: 0,
         settings: JSON.parse(localStorage.getItem('RevisionSlider-settings') || '{}'),
         preload: function() {
@@ -168,3 +168,71 @@
     mw.hook('dev.ui').add(RevisionSlider.preload.bind(RevisionSlider));
     mw.loader.using('mediawiki.api').then(RevisionSlider.preload.bind(RevisionSlider));
  })();
+
+
+ // Add the css when copy pasting, please don't push this to the actual dev wiki page pls future me
+ mw.util.addCSS(`.revslider-container {
+    border: 1px solid #ccc;
+}
+
+.revslider-wrapper {
+    display: none;
+}
+
+.revslider-header {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    height: 32px;
+}
+
+.revslider-header-text {
+    font-weight: bold;
+    flex: 1;
+    text-align: center;
+}
+
+.revslider-icon {
+    height: 26px;
+    width: 26px;
+    margin-right: 4px;
+    background-repeat: no-repeat;
+    background-position: center center;
+}
+
+.revslider-toggle {
+    background-image: linear-gradient(transparent,transparent),url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Ctitle%3Eexpand%3C/title%3E%3Cpath d=%22M19 6.25l-1.5-1.5-7.5 7.5-7.5-7.5L1 6.25l9 9 9-9z%22/%3E%3C/svg%3E");
+    transition: transform 200ms ease-in-out;
+}
+
+.revslider-expanded .revslider-toggle {
+    transform: rotate(-180deg);
+}
+
+.revslider-expanded .revslider-wrapper {
+    display: block;
+}
+
+.revslider-pin {
+    visibility: hidden;
+    border-radius: 4px;
+    background: white;
+    transition: background 300ms ease;
+}
+
+.revslider-expanded .revslider-pin {
+    visibility: visible;
+}
+
+.revslider-pin svg {
+    fill: black;
+    transition: fill 300ms ease;
+}
+
+.revslider-pin.always-expand {
+    background: #2a4b8d;
+}
+
+.revslider-pin.always-expand svg {
+    fill: white;
+}`);

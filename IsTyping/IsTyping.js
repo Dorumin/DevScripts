@@ -6,7 +6,7 @@
  * @scope site-wide
  * @author Dorumin
  */
- 
+
 (function() {
     if (mw.config.get('wgCanonicalSpecialPageName') !== 'Chat' || window.IsTyping_init) {
         return;
@@ -15,7 +15,7 @@
     var lastRequestTimestamp = 0,
         currentState = false,
         i18n, loaded = 0;
- 
+        
     // Get the room object for the active room
     function getCurrentRoom() {
         if (mainRoom.activeRoom == 'main' || mainRoom.activeRoom === null) {
@@ -23,7 +23,7 @@
         }
         return mainRoom.chats.privates[mainRoom.activeRoom];
     }
- 
+    
     // Announce to your current room that you're typing
     function sendTypingState(state) {
         currentState = state;
@@ -40,7 +40,7 @@
             statusState: state
         }).xport());
     }
- 
+    
     // Update the typing indicator
     function showUsersTyping(id, user, status) {
         if (!IsTyping.data[id]) {
@@ -86,18 +86,18 @@
             }
         } else {
             $body.addClass('is-typing');
-            pointer = pointer.map(function(user) {
+            var args = pointer.map(function(user) {
                 // .parse() should do the escaping for us
                 return '<span class="username">' + user + '</span>';
             });
-            pointer.unshift('typing-' + (pointer.length > 3 ? 'more' : pointer.length));
-            IsTyping.$indicator.html(i18n.msg.apply(window, pointer).parse());
+            args.unshift('typing-' + (pointer.length > 3 ? 'more' : pointer.length));
+            IsTyping.$indicator.html(i18n.msg.apply(window, args).parse());
             if (IsTyping.doScroll && !hasIndicator) {
                 div.scrollTop += 20;
             }
         }
     }
- 
+    
     // Bind your typing to the socket requests
     $(document.getElementsByName('message')).keydown(function(e) {
         var that = this,
@@ -122,12 +122,12 @@
         }
         sendTypingState(false);
     });
- 
+    
     // Update the typing list when you switch rooms accordingly
     function click() {
         showUsersTyping(mainRoom.activeRoom == 'main' || mainRoom.activeRoom === null ? mainRoom.roomId : mainRoom.activeRoom);
     }
- 
+    
     // Generate binding for socket updates to showUsersTyping
     function generateBinding(type) {
         return function(msg) {
@@ -144,14 +144,14 @@
             }
         };
     }
- 
+    
     // Now for private messages!
     function bindPrivateRooms(u) {
         var privateRoomId = u.attributes.roomId,
         privateRoom = mainRoom.chats.privates[privateRoomId];
         privateRoom.socket.on('updateUser', generateBinding('private'));
     }
- 
+    
     // Initialize bindings
     function init(i18nd) {
         i18n = i18nd;
@@ -159,7 +159,7 @@
         mainRoom.model.privateUsers.bind('add', bindPrivateRooms);
         $(document).click('#PrivateChatList .User, #Rail .wordmark', click);
     }
- 
+    
     // Preload required resources
     function preload() {
         if (++loaded === 2) {

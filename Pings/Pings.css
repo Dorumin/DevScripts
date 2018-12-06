@@ -1,0 +1,118 @@
+.pings-setting {
+    font-size: 14px;
+    padding: 2px;
+}
+
+.pings-input input {
+    margin-left: 2px;
+    width: 100%;
+    padding: 4px;
+    box-sizing: border-box;
+}
+
+.pings-checkbox {
+    width: 50%;
+    box-sizing: border-box;
+    display: inline-flex;
+    user-select: none;
+}
+
+.pings-checkbox label {
+    flex: 1;
+}
+
+#PingsModal textarea {
+    width: 100%;
+    resize: vertical;
+    padding: 4px 0 0 4px;
+    box-sizing: border-box;
+}
+
+#PingsTextarea {
+    min-height: 140px;
+}
+
+#PingsSettingTextarea-blacklist {
+    min-height: 80px;
+}
+
+#PingsContainer {
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 12px;
+}
+
+#PingsRecent .FakeChat {
+    position: relative;
+    background: none;
+    border: none;
+    margin-left: -10px;
+    margin-top: 0;
+}
+
+#PingsRecentHeader {
+    padding-top: 6px;
+    padding-left: 6px;
+    font-size: 18px;
+}
+
+#PingsPlayAudio {
+    margin-bottom: 6px;
+    float: right;
+}
+
+body {
+    overflow-y: hidden;
+}
+
+/* TODO: Splotch? */
+.chat-toolbar__button[data-name="Pings"] .count::before {
+    content: ' (';
+    white-space: pre;
+}
+
+.chat-toolbar__button[data-name="Pings"] .count::after {
+    content: ')';
+}
+
+/* Jumo-to-message styles */
+.jumped-to {
+    animation-name: jumped-to-highlight;
+    animation-duration: 5s;
+}
+
+body:not(.mc-is-active) .jumped-to.continued {
+    padding-bottom: 0;
+    margin-bottom: 1px;
+}
+
+.jumped-to.continued:last-of-type {
+    margin-bottom: 16px;
+}
+
+@keyframes jumped-to-highlight {
+    0% {
+        background-color: rgba(250, 166, 26, .2);
+    }
+    50% {
+        background-color: rgba(250, 166, 26, .2);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+/* MobileChat */
+.mc-is-active #PingsContainer {
+    max-height: calc(100vh - 120px);
+    width: 100%;
+}
+
+.mc-is-active #PingsModal .modalContent {
+    margin: 0 15px;
+}
+
+.mc-is-active #PingsModal .FakeChat {
+    margin-left: 0;
+}

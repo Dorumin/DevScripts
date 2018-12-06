@@ -5,16 +5,16 @@
     transition: outline 500ms;
     z-index: 1;
 }
- 
+
 body.picking-group-pm #Rail,
 body.picking-group-pm #WikiChatList {
     outline: 10000px rgba(0, 0, 0, .2) solid;
 }
- 
+
 body.picking-group-pm #UserStatsMenu {
     display: none !important; /* Curse you, inline styles! */
 }
- 
+
 /* Styles for floating group picker help */
 #GroupPickerInfo {
     position: fixed;
@@ -26,15 +26,19 @@ body.picking-group-pm #UserStatsMenu {
     color: #fff;
     font-weight: bold;
     cursor: pointer;
-    animation-name: sliiiide;
+    animation-name: xpm_slide_down;
     animation-duration: .5s;
     user-select: none;
 }
- 
+
+/* MobileChat tweaks */
 .ChatWindow.mc-is-active #GroupPickerInfo {
     right: 10%;
+    animation-name: xpm_slide_up;
+    top: auto;
+    bottom: 65px;
 }
- 
+
 #GroupPickerInfo .cross,
 #GroupPickerInfo .start {
     display: flex; /* I still can't believe this editor doesn't support flex */
@@ -42,12 +46,12 @@ body.picking-group-pm #UserStatsMenu {
     justify-content: center;
     position: absolute;
 }
- 
+
 #GroupPickerInfo .cross:hover,
 #GroupPickerInfo .start:hover {
     background-color: #00A5FF;
 }
- 
+
 #GroupPickerInfo .start {
     height: 50px;
     right: 50px;
@@ -55,7 +59,7 @@ body.picking-group-pm #UserStatsMenu {
     padding: 0 1em;
     text-align: center;
 }
- 
+
 #GroupPickerInfo .cross {
     width: 50px;
     right: 0;
@@ -63,12 +67,25 @@ body.picking-group-pm #UserStatsMenu {
     height: 47px;
     padding-bottom: 3px; /* I know exactly how it's gonna look, I spent 20 minutes measuring that it was perfectly square and centered (0_=) */
 }
- 
-@keyframes sliiiide {
-    from {top: -50px;}
-    to {top: 65px;}
+
+@keyframes xpm_slide_down {
+    from {
+        top: -50px;
+    }
+    to {
+        top: 65px;
+    }
 }
- 
+
+@keyframes xpm_slide_up {
+    from {
+        bottom: -50px;
+    }
+    to {
+        bottom: 65px;
+    }
+}
+
 /* ChatHeader fix for long titles, now that group PMs show all members in the header */
 #ChatHeader .private {
     overflow: hidden;
@@ -78,32 +95,41 @@ body.picking-group-pm #UserStatsMenu {
     left: 0;
     right: 150px;
 }
- 
+
 /* Hide badges on group PMs */
 #PrivateChatList .group {
     overflow: hidden
 }
- 
+
 #PrivateChatList .group .badge {
     display: none;
 }
- 
+
 #PrivateChatList .group .username {
     margin-right: 0;
 }
- 
+
+/* Hide away state on groups */
+.User.away.group {
+    color: inherit;
+}
+
+.User.group .details {
+    display: none;
+}
+
 /* Header styles */
 .group-header {
     cursor: pointer;
 }
- 
+
 #private-group-name-choose {
     font-size: 16px;
     width: 70%;
     margin-left: 10px;
     padding: 2px 4px;
 }
- 
+
 .group-header .set-name,
 .group-header .cancel {
     border-radius: 50%;
@@ -115,40 +141,41 @@ body.picking-group-pm #UserStatsMenu {
     position: relative;
     bottom: 2px;
 }
- 
+
 .group-header .set-name {
     color: #2bdf2b;
     border: solid 1px #2bdf2b;
 }
- 
+
 .group-header .set-name:hover {
     background-color: #2bdf2b;
     color: white;
 }
- 
+
 .group-header .cancel {
     color: red;
     border: solid 1px red;
 }
- 
+
 .group-header .cancel:hover {
     background-color: red;
     color: white;
 }
- 
+
 /* User selection transition */
 #WikiChatList .User {
     transition: padding-left .1s ease;
 }
- 
+
 #WikiChatList .User img {
     transition: left .1s ease;
 }
- 
+
 #WikiChatList .User.selected {
     padding-left: 40px;
 }
- 
+
 #WikiChatList .User.selected img {
     left: 8px;
 }
+

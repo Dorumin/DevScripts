@@ -8,187 +8,286 @@
  */
 
 (function() {
-    if (mw.config.get('wgCanonicalSpecialPageName') !== 'Chat' || window.IsTyping_init) {
+    if (
+        mw.config.get('wgCanonicalSpecialPageName') !== 'Chat' ||
+        (window.IsTyping && IsTyping.init)
+    ) {
         return;
     }
-    window.IsTyping_init = true;
-    var lastRequestTimestamp = 0,
-        currentState = false,
-        i18n, loaded = 0;
-        
-    // Get the room object for the active room
-    function getCurrentRoom() {
-        if (mainRoom.activeRoom == 'main' || mainRoom.activeRoom === null) {
-            return mainRoom;
-        }
-        return mainRoom.chats.privates[mainRoom.activeRoom];
-    }
-    
-    // Announce to your current room that you're typing
-    function sendTypingState(state) {
-        currentState = state;
-        var currentRoom = getCurrentRoom(),
-        isMain = currentRoom.isMain();
-        if (
-             isMain && IsTyping.mainRoomDisabled ||
-            !isMain && IsTyping.privateRoomDisabled
-        ) {
-            return;
-        }
-        currentRoom.socket.send(new models.SetStatusCommand({
-            statusMessage: 'typingState',
-            statusState: state
-        }).xport());
-    }
-    
-    // Update the typing indicator
-    function showUsersTyping(id, user, status) {
-        if (!IsTyping.data[id]) {
-            IsTyping.data[id] = [];
-            IsTyping.data[id].timeouts = {};
-        }
-        var pointer = IsTyping.data[id],
-        curRoom = getCurrentRoom(),
-        $body = $(document.body);
-        if (user) {
-            if (status === true) {
-                if (pointer.timeouts[user]) {
-                    clearTimeout(pointer.timeouts[user]);
-                }
-                pointer.timeouts[user] = setTimeout(function() {
-                    var i = pointer.indexOf(user);
-                    pointer.splice(i, 1);
-                    showUsersTyping(id);
-                    delete pointer.timeouts[user];
-                }, 10000);
-                if (pointer.indexOf(user) == -1) {
-                    pointer.push(user);
-                }
-            } else {
-                var i = pointer.indexOf(user);
-                pointer.splice(i, 1);
-                clearTimeout(pointer.timeouts[user]);
-                delete pointer.timeouts[user];
+
+    window.IsTyping = $.extend({
+        // <config>
+        // Kill script default styling
+        noStyle: false,
+        // Kill script auto scroll compensation, not necessary after updated indicator
+        doScroll: false,
+        // Kill script on main
+        mainRoomDisabled: false,
+        // Kill script on PMs
+        privateRoomDisabled: false,
+        // Filter self or not, which I documented for some reason
+        filterSelf: true,
+        // Indicator jQuery object, defined on init
+        $indicator: null,
+        // Users whose typing state is hidden from the typing indicator
+        ignore: [],
+        // Use old configuration
+        old: false,
+        // </config>, further overrides are possible but not supported
+        // Milliseconds to wait before a typing state is invalidated
+        statusTTL: 8000,
+        // Milliseconds before sending another typing ping to a room
+        ownStatusThrottle: 6000,
+        // Pixels to scroll by if [this.doScroll] is set to true
+        scrollBy: 20,
+        // For keeping track of loaded resources
+        _preload: 0,
+        // Object containing room data mapped by room ID
+        data: {},
+        // Pushes a function call to the end of the callstack
+        setImmediate: function(fn) {
+            setTimeout(fn.bind(this), 0);
+        },
+        // Returns the currently active room
+        getCurrentRoom: function() {
+            if (mainRoom.activeRoom == 'main' || mainRoom.activeRoom === null) {
+                return mainRoom;
             }
-        }
-        if (curRoom.roomId != id) return; // No need to update; the change was for another room
-        var hasIndicator = $body.hasClass('is-typing'),
-        div = curRoom.viewDiscussion.chatDiv.get(0);
-        if (!pointer.length) {
-            $body.removeClass('is-typing');
-            IsTyping.$indicator.html('');
+            return mainRoom.chats.privates[mainRoom.activeRoom];
+        },
+        // Gets the corresponding object in [this.data] for a given room
+        getRoomState: function(room) {
+            return this.data[room.roomId];
+        },
+        // Sends a typing state to a room
+        sendTypingState: function(status, room) {
+            room = room || this.getCurrentRoom();
+            var state = this.getRoomState(room),
+                main = room.isMain();
             if (
-                IsTyping.doScroll &&
-                hasIndicator &&
-                div.scrollHeight - div.clientHeight != div.scrollTop
-            ) {
-                div.scrollTop -= 20;
+                !state ||
+                (state.typing.indexOf(wgUserName) == -1 && sItatus === false) ||
+                (main  && this.mainRoomDisabled) ||
+                (!main && this.privateRoomDisabled)
+            ) return;
+
+            state.last = status ? Date.now() : 0;
+            room.socket.send(new models.SetStatusCommand({
+                statusMessage: 'typingState',
+                statusState: status
+            }).xport());
+        },
+        // Adds someone to the typing list of a room
+        startTyping: function(name, state, room) {
+            if (state.typing.indexOf(name) == -1) {
+                state.typing.push(name);
             }
-        } else {
-            $body.addClass('is-typing');
-            var args = pointer.map(function(user) {
-                // .parse() should do the escaping for us
-                return '<span class="username">' + user + '</span>';
-            });
-            args.unshift('typing-' + (pointer.length > 3 ? 'more' : pointer.length));
-            IsTyping.$indicator.html(i18n.msg.apply(window, args).parse());
-            if (IsTyping.doScroll && !hasIndicator) {
-                div.scrollTop += 20;
+
+            if (state.timeouts[name]) {
+                clearTimeout(state.timeouts[name]);
             }
-        }
-    }
-    
-    // Bind your typing to the socket requests
-    $(document.getElementsByName('message')).keydown(function(e) {
-        var that = this,
-        oldVal = this.value,
-        data = IsTyping.data[getCurrentRoom().roomId] || {},
-        lastTime = data.timestamp || 0;
-        setTimeout(function() {
-            if (oldVal != that.value && !that.value) {
-                data.timestamp = 0;
-                sendTypingState(false);
+
+            state.timeouts[name] = setTimeout(this.stopTyping.bind(this, name, state, room), this.statusTTL);
+        },
+        // Removes someone from the typing list of a room
+        stopTyping: function(name, state, room) {
+            var index = state.typing.indexOf(name);
+
+            if (index != -1) {
+                state.typing.splice(index, 1);
+            }
+
+            if (state.timeouts[name]) {
+                clearTimeout(state.timeouts[name]);
+                delete state.timeouts[name];
+            }
+
+            if (this.getCurrentRoom() == room) {
+                this.updateTypingIndicator(this.filterNames(state.typing));
+            }
+        },
+        // Filters self and ignored users before passing into updateTypingIndicator
+        filterNames: function(names) {
+            return names.filter(function(name) {
+                return (name != wgUserName || !this.filterSelf) && this.ignore.indexOf(name) == -1;
+            }.bind(this)); // FIXME: ugly
+        },
+        // Updates the state of a room from a socket event and the indicator if it's currently active
+        updateTyping: function(room, name, status) {
+            var state = this.getRoomState(room);
+
+            if (status) {
+                this.startTyping(name, state, room);
+            } else {
+                this.stopTyping(name, state);
+            }
+
+            if (this.getCurrentRoom() == room) {
+                if (
+                    (room.isMain()  && this.mainRoomDisabled) ||
+                    (!room.isMain() && this.privateRoomDisabled)
+                ) {
+                    this.updateTypingIndicator([]);
+                } else {
+                    this.updateTypingIndicator(this.filterNames(state.typing));
+                }
+            }
+        },
+        // Sets the text of the indicator element and does other DOM stuff, might have been able to split this one up some more
+        updateTypingIndicator: function(names) {
+            names = names || this.filterNames(this.getRoomState(this.getCurrentRoom()).typing);
+            var $body = $(document.body),
+                div = this.doScroll
+                    ? this.getCurrentRoom().viewDiscussion.chatDiv.get(0)
+                    : null,
+                hc = $body.hasClass('is-typing');
+
+            if (!names.length) {
+                $body.removeClass('is-typing');
+                IsTyping.$indicator.html('');
+                if (
+                    this.doScroll &&
+                    hc &&
+                    div.scrollTop + div.clientHeight != div.scrollHeight
+                ) {
+                    div.scrollHeight; /* trigger reflow */
+                    div.scrollTop -= this.scrollBy;
+                }
                 return;
             }
-            if (oldVal != that.value && Date.now() - lastTime > 8000) { // if more than 8 seconds have passed
-                data.timestamp = Date.now();
-                sendTypingState(true);
+
+            var tags = names.map(function(name) {
+                    // .parse() does the escaping
+                    return '<span class="username">' + name + '</span>';
+                }),
+                message = names.length > 3
+                    ? 'typing-more'
+                    : 'typing-' + names.length,
+                args = [message].concat(tags);
+
+            $body.addClass('is-typing');
+            this.$indicator.html(this.i18n.msg.apply(window, args).parse());
+            if (this.doScroll && !hc) {
+                div.scrollHeight; /* trigger reflow */
+                div.scrollTop += this.scrollBy;
             }
-        }, 0);
-    }).blur(function() { // when the user clicks away of the textarea, or the window
-        var data = IsTyping.data[getCurrentRoom().roomId];
-        if (data) {
-            data.timestamp = 0;
-        }
-        sendTypingState(false);
-    });
-    
-    // Update the typing list when you switch rooms accordingly
-    function click() {
-        showUsersTyping(mainRoom.activeRoom == 'main' || mainRoom.activeRoom === null ? mainRoom.roomId : mainRoom.activeRoom);
-    }
-    
-    // Generate binding for socket updates to showUsersTyping
-    function generateBinding(type) {
-        return function(msg) {
-            var data = JSON.parse(msg.data).attrs,
+        },
+        // Called on socket updateUser messages, bound to a specific room
+        socketHandler: function(room, message) {
+            var data = JSON.parse(message.data).attrs,
                 status = data.statusState,
-                user = data.name,
-                roomId = this.roomId;
-            if (
-                (user != wgUserName || !IsTyping.filterSelf) &&
-                data.statusMessage == 'typingState' &&
-                !IsTyping[type + 'RoomDisabled']
-            ) {
-                showUsersTyping(roomId, user, status);
+                name = data.name;
+
+            if (data.statusMessage == 'typingState') {
+                this.updateTyping(room, name, status);
             }
-        };
-    }
-    
-    // Now for private messages!
-    function bindPrivateRooms(u) {
-        var privateRoomId = u.attributes.roomId,
-        privateRoom = mainRoom.chats.privates[privateRoomId];
-        privateRoom.socket.on('updateUser', generateBinding('private'));
-    }
-    
-    // Initialize bindings
-    function init(i18nd) {
-        i18n = i18nd;
-        mainRoom.socket.on('updateUser', generateBinding('main'));
-        mainRoom.model.privateUsers.bind('add', bindPrivateRooms);
-        $(document).click('#PrivateChatList .User, #Rail .wordmark', click);
-    }
-    
-    // Preload required resources
-    function preload() {
-        if (++loaded === 2) {
-            window.dev.i18n.loadMessages('IsTyping')
-                .then(init);
+        },
+        // Called for each new chat the user joins, including main on startup
+        initChat: function(room) {
+            this.data[room.roomId] = {
+                timeouts: {}, // Object mapped by username of timeout IDs
+                typing: [],  // Usernames of the people typing, including main user
+                last: 0     // Last time when a typing status was sent
+            };
+            room.socket.on('updateUser', this.socketHandler.bind(this, room));
+            room.model.room.bind('change', this.onRoomChange.bind(this, room));
+        },
+        // Called when a new private room is opened, the roomId will always be accurate even with group PMs
+        onPrivateRoom: function(user) {
+            var roomId = user.attributes.roomId,
+                room = mainRoom.chats.privates[roomId];
+            this.initChat(room);
+        },
+        // Bound to each keydown event on the message textarea
+        // It's a keydown event so it can detect backspace events and compare previous and next values with an immediate timeout
+        onKeyDown: function(e) {
+            var textarea = e.target,
+                value = textarea.value,
+                state = this.getRoomState(this.getCurrentRoom());
+
+            this.setImmediate(function() {
+                if (value == textarea.value) return;
+                if (!textarea.value) {
+                    this.sendTypingState(false);
+                } else if (Date.now() - state.last > this.ownStatusThrottle) {
+                    this.sendTypingState(true);
+                }
+            });
+        },
+        // Called when the message textarea loses focus
+        onBlur: function() {
+            this.sendTypingState(false);
+        },
+        // Called when a private message on the userlist is clicked before rooms are switched
+        onPrivateClick: function() {
+            if (mainRoom.activeRoom == 'main' || !mainRoom.activeRoom) {
+                this.sendTypingState(false, mainRoom);
+            }
+        },
+        // Called when you change in our out of a room, and since it's bound to each NodeRoomController, it calls twice per room change
+        // Yep, I managed to find a fancy mainRoom event for it
+        onRoomChange: function(room) {
+            var roomId = room.isMain() ? 'main' : room.roomId;
+            if (mainRoom.activeRoom == roomId) {
+                this.updateTypingIndicator();
+            } else {
+                this.sendTypingState(false, room);
+            }
+        },
+        // Called after each lib is loaded
+        preload: function() {
+            if (++this._preload == 2) {
+                dev.i18n.loadMessages('IsTyping').then(this.init.bind(this));
+            }
+        },
+        // Initialization and double run check property, so don't try to override this one
+        init: function(i18n) {
+            i18n.useUserLang();
+            this.i18n = i18n;
+            this.$indicator = this.$indicator || $('<div>', {
+                class: 'typing-indicator'
+            }).appendTo('body');
+            this.initChat(mainRoom);
+
+            mainRoom.model.privateUsers.bind('add', this.onPrivateRoom.bind(this));
+            mainRoom.viewDiscussion.getTextInput()
+                .on('keydown', this.onKeyDown.bind(this))
+                .on('blur', this.onBlur.bind(this));
+
+            if (this.old) {
+                this.setupOldConfiguration();
+            }
+        },
+        // For people who like to have their chat jiggle around
+        setupOldConfiguration: function() {
+            this.$indicator.remove();
+            this.$indicator = $('<div>', {
+                class: 'typing-indicator'
+            }).prependTo('#Write');
+            this.doScroll = true;
         }
-    }
-    mw.hook('dev.i18n').add(preload);
-    mw.hook('dev.chat.render').add(preload);
-    // Declare a global variable for debugging
-    window.IsTyping = $.extend({
-        sendTypingState: sendTypingState,
-        showUsersTyping: showUsersTyping,
-        getCurrentRoom: getCurrentRoom,
-        $indicator: (window.IsTyping && IsTyping.$indicator) || $('<div>', {
-            class: 'typing-indicator'
-        }).prependTo('#Write'),
-        data: {},
-        doScroll: true,
-        filterSelf: true
     }, window.IsTyping);
-    if (!IsTyping.noStyle) {
+
+    mw.hook('dev.i18n').add(IsTyping.preload.bind(IsTyping));
+    mw.hook('dev.chat.render').add(IsTyping.preload.bind(IsTyping));
+
+    if (IsTyping.old) {
+        // Legacy styles
         importArticle({
             type: 'style',
-            articles: [
-                'u:dev:MediaWiki:IsTyping.css'
-            ]
+            article: 'u:dev:MediaWiki:IsTyping/code.css'
+        });
+    } else {
+        // some dynamic css for good measure
+        mw.util.addCSS('.typing-indicator {\
+            color: ' + getComputedStyle(document.getElementById('Write')).color + '\
+        }');
+        importArticle({
+            type: 'style',
+            article: 'u:dev:MediaWiki:IsTyping.css'
         });
     }
+
     importArticles({
         type: 'script',
         articles: [

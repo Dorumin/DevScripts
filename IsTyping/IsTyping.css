@@ -1,20 +1,15 @@
-body.is-typing .Chat {
-    margin-bottom: 20px;
+#WikiaPage {
+  margin-bottom: 4px;
 }
-body.is-typing .typing-indicator {
-    display: block;
-}
+
 .typing-indicator {
-    display: none;
-    left: 5px;
-    line-height: 25px;
-    position: absolute;
-    right: 5px;
-    top: -25px;
+  position: absolute;
+  bottom: 2px;
+  left: 2em;
+  right: 2em;
+  font-size: 10px;
 }
+
 .typing-indicator .username {
-    font-weight: bold;
-}
-body.warn .typing-indicator {
-    top: -45px;
+  font-weight: bold;
 }

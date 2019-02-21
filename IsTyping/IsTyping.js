@@ -48,12 +48,16 @@
         setImmediate: function(fn) {
             setTimeout(fn.bind(this), 0);
         },
+        // Returns a room from an ID
+        getRoom: function(id) {
+            return mainRoom.chats.privates[id] || mainRoom;
+        },
         // Returns the currently active room
         getCurrentRoom: function() {
-            if (mainRoom.activeRoom == 'main' || mainRoom.activeRoom === null) {
+            if (mainRoom.activeRoom == 'main' || mainRoom.activeRoom === null || mainRoom.activeRoom == mainRoom.roomId) {
                 return mainRoom;
             }
-            return mainRoom.chats.privates[mainRoom.activeRoom];
+            return mainRoom.chats.privates[mainRoom.activeRoom] || mainRoom;
         },
         // Gets the corresponding object in [this.data] for a given room
         getRoomState: function(room) {
@@ -65,8 +69,7 @@
             var state = this.getRoomState(room),
                 main = room.isMain();
             if (
-                !state ||
-                (state.typing.indexOf(wgUserName) == -1 && sItatus === false) ||
+                (state.typing.indexOf(wgUserName) == -1 && status === false) ||
                 (main  && this.mainRoomDisabled) ||
                 (!main && this.privateRoomDisabled)
             ) return;
@@ -218,12 +221,6 @@
         onBlur: function() {
             this.sendTypingState(false);
         },
-        // Called when a private message on the userlist is clicked before rooms are switched
-        onPrivateClick: function() {
-            if (mainRoom.activeRoom == 'main' || !mainRoom.activeRoom) {
-                this.sendTypingState(false, mainRoom);
-            }
-        },
         // Called when you change in our out of a room, and since it's bound to each NodeRoomController, it calls twice per room change
         // Yep, I managed to find a fancy mainRoom event for it
         onRoomChange: function(room) {
@@ -232,6 +229,25 @@
                 this.updateTypingIndicator();
             } else {
                 this.sendTypingState(false, room);
+            }
+        },
+        // Called when an user is kicked or banned
+        // Doesn't need to be bound to part or logout events since those are already set to timeouts higher than the typing status TTL
+        // 45000 and 10000 milliseconds respectively
+        // Also clears everything if you're kicked or banned
+        onUserRemoved: function(event) {
+            var name = JSON.parse(event.data).attrs.kickedUserName;
+
+            for (var id in this.data) {
+                var room = this.getRoom(id);
+                if (name == wgUserName) {
+                    var users = this.data[id].typing;
+                    for (var i in users) {
+                        this.updateTyping(room, users[i], false);
+                    }
+                } else {
+                    this.updateTyping(room, name, false);
+                }
             }
         },
         // Called after each lib is loaded
@@ -248,7 +264,10 @@
                 class: 'typing-indicator'
             }).appendTo('body');
             this.initChat(mainRoom);
+            Object.values(mainRoom.chats.privates).forEach(this.initChat.bind(this));
 
+            mainRoom.socket.bind('kick', this.onUserRemoved.bind(this));
+            mainRoom.socket.bind('ban', this.onUserRemoved.bind(this));
             mainRoom.model.privateUsers.bind('add', this.onPrivateRoom.bind(this));
             mainRoom.viewDiscussion.getTextInput()
                 .on('keydown', this.onKeyDown.bind(this))
@@ -273,6 +292,7 @@
 
     if (IsTyping.old) {
         // Legacy styles
+        // FIME: Move to setupOldConfiguration?
         importArticle({
             type: 'style',
             article: 'u:dev:MediaWiki:IsTyping/code.css'

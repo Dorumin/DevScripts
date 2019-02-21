@@ -1,12 +1,145 @@
 /* EditConflictAlert
  *
  * Tells the user when a page that is currently being edited is updated.
- * @scope: Any
- * @author: Dorumin
+ *
+ * @author Dorumin
+ */
+
+mw.loader.using('mediawiki.api').then(function() {
+    var config = mw.config.get([
+        'wgAction',
+        'wgNamespaceNumber',
+        'wgNamespaceIds',
+        'wgPageName'
+    ])
+    
+    if (
+        ['edit', 'submit'].indexOf(config.wgAction) == -1 ||
+        [1200, 1201, 2002].indexOf(config.wgNamespaceNumber) != -1 ||
+        window.EditConflictAlert && EditConflictAlert.init
+    ) return;
+
+    window.EditConflictAlert = $.extend({
+        // Static
+        config: config,
+        api: new mw.Api(),
+        // State
+        _preload: 0,
+        notifications: null,
+        old: null,
+        cur: null,
+        // Methods
+        preload: function() {
+            if (++this._preload == 3) {
+                dev.i18n.loadMessages('EditConflictAlert').then(this.init.bind(this));
+            }
+        },
+        alert: function() {
+            if ($('.banner-notifications-wrapper[data-id="' + r.revid + '"]').length) return;
+            this.cur.viewed = true;
+            var message = i18n.msg('notification-body').escape()
+                + ' (<a id="view-diff" href="#">'
+                + i18n.msg('diff').escape()
+                + '</a>)';
+            new BannerNotification(
+                message,
+                'notify'
+            ).show();
+            $('#view-diff').click(function(e) {
+                e.preventDefault();
+                show_diff_modal();
+            });
+        },
+        fetch: function(update) {
+            return this.api.get({
+                action: 'query',
+                prop: 'revisions',
+                rvprop: 'ids|user|content',
+                titles: wgPageName,
+                cb: Date.now()
+            }).then(function(d) {
+                var page = d.query.pages[Object.keys(d.query.pages)[0]];
+                if (page.missing || !page.revisions || !page.revisions[0]) return;
+                var rev = page.revisions[0];
+                if (update) {
+                    if (this[update].revid != rev.revid) {
+                        this[update] = rev;
+                    }
+                } else {
+                    this.old = rev;
+                    this.cur = rev;
+                }
+
+                if (this.old.revid != this.cur.revid) {
+                    this.alert();
+                }
+            }.bind(this));
+        },
+        prepareDOM: function() {
+            this.notifications = document.querySelector('.banner-notifications-placeholder');
+            if (!this.notifications) {
+                var page = document.getElementById('WikiaPage');
+                this.notifications = dev.ui({
+                    type: 'div',
+                    classes: ['banner-notifications-placeholder'],
+                    style: {
+                        position: 'absolute',
+                        height: 0,
+                        left: 0,
+                        right: 0
+                    },
+                    children: [
+                        {
+                            type: 'div',
+                            classes: ['banner-notifications-wrapper float'],
+                            style: {
+                                top: '56px'
+                            }
+                        }
+                    ]
+                });
+                page.parentElement.insertBefore(this.notifications, page);
+            }
+        },
+        init: function(i18n) {
+            this.i18n = i18n;
+
+            this.prepareDOM();
+            this.fetch();
+            setInterval(this.fetch.bind(this, 'cur'));
+
+        }
+    }, window.EditConflictAlert);
+
+    mw.hook('dev.ui').add(EditConflictAlert.preload.bind(EditConflictAlert));
+    mw.hook('dev.i18n').add(EditConflictAlert.preload.bind(EditConflictAlert));
+    window.addEventListener('load', EditConflictAlert.preload.bind(EditConflictAlert));
+
+    importArticles({
+        type: 'script',
+        articles: [
+            'u:dev:MediaWiki:I18n-js/code.js',
+            'u:dev:MediaWiki:UI-js/code.js'
+        ]
+    });
+});
+
+
+/* EditConflictAlert
+ *
+ * Tells the user when a page that is currently being edited is updated.
+ *
+ * @author Dorumin
  */
  
 require(['jquery', 'mw', 'BannerNotification'], function($,mw,BannerNotification) {
-    if (!(wgAction === 'edit' || wgAction === 'submit') || {1201: 1, 1200: 1}[wgNamespaceNumber] || window.EditConflictAlertInit) return;
+    if (
+        !(wgAction === 'edit' || wgAction === 'submit') ||
+        {1201: 1, 1200: 1, 2002: 1}[wgNamespaceNumber] ||
+        window.EditConflictAlertInit
+    )  {
+        return;
+    }
     window.EditConflictAlertInit = true;
     mw.loader.using('mediawiki.api').then(function() {
         var Api = new mw.Api(),
@@ -21,7 +154,7 @@ require(['jquery', 'mw', 'BannerNotification'], function($,mw,BannerNotification
         content,
         i18n;
  
-        if (typeof dev == 'undefined' || typeof dev.i18n == 'undefined') { // i18n-js lib
+        if (!window.dev || !window.dev.i18n) { // i18n-js lib
             importArticle({
                 type: 'script',
                 article: 'u:dev:MediaWiki:I18n-js/code.js'
@@ -32,7 +165,7 @@ require(['jquery', 'mw', 'BannerNotification'], function($,mw,BannerNotification
             return Api.get({
                 action: 'query',
                 prop: 'revisions',
-                rvprop: 'ids|user' + (with_content ? '|content' : ''),
+                rvprop: 'ids|user|content',
                 titles: wgPageName,
                 cb: Date.now()
             });
@@ -181,8 +314,12 @@ require(['jquery', 'mw', 'BannerNotification'], function($,mw,BannerNotification
             setInterval(function() {
                 fetch_revs(true).done(function(data) {
                     var d = data.query.pages,
-                    p = d[Object.keys(d)[0]],
-                    r = p.revisions[0];
+                        p = d[Object.keys(d)[0]];
+                    if (!p.revisions) {
+                        // We are editing a nonexistent page.
+                        return;
+                    }
+                    var r = p.revisions[0];
                     content = r['*'];
                     if (r.revid != cur_id && r.user != wgUserName) {
                         if ($('.banner-notifications-wrapper[data-id="' + r.revid + '"]').length) return;
@@ -218,19 +355,5 @@ require(['jquery', 'mw', 'BannerNotification'], function($,mw,BannerNotification
                 init();
             });
         });
-        if ($('.banner-notifications-placeholder').length) {
-            return;
-        }
-        $('.wds-global-navigation-wrapper').after($('<div>', {
-            class: 'banner-notifications-placeholder',
-            append: $('<div>', {
-                class: 'banner-notifications-wrapper float'
-            }).css('top', 56)
-        }).css({
-            height: 0,
-            position: 'absolute',
-            left: 0,
-            right: 0
-        }));
     });
 });

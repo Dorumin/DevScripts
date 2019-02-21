@@ -57,6 +57,16 @@
     font-size: 18px;
 }
 
+#PingsPlayFloat {
+    float: right;
+}
+
+#PingsSettingCheckbox-audio-enabled {
+    width: auto;
+    margin: 5px 5px 10px;
+}
+
+/* TODO: Remove this rule in a handful of days */
 #PingsPlayAudio {
     margin-bottom: 6px;
     float: right;
@@ -82,9 +92,13 @@ body {
     animation-duration: 5s;
 }
 
+body:not(.mc-is-active) .jumped-to {
+    padding-bottom: 1px;
+    margin-bottom: 15px;
+}
+
 body:not(.mc-is-active) .jumped-to.continued {
-    padding-bottom: 0;
-    margin-bottom: 1px;
+    margin-bottom: 0;
 }
 
 .jumped-to.continued:last-of-type {

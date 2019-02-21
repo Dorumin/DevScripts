@@ -29,6 +29,7 @@
             ['notifications', 'checkbox'],
             ['casesensitive', 'checkbox'],
             ['word-boundary', 'checkbox'],
+            ['audio-enabled', 'checkbox'],
             ['inline-alerts', 'checkbox'],
             ['highlight-ping', 'checkbox'],
         ],
@@ -36,12 +37,13 @@
             whitelist: false,
             notifications: false,
             casesensitive: false,
-            'highlight-ping': false,
             'word-boundary': false,
+            'audio-enabled': false,
             'inline-alerts': false,
+            'highlight-ping': false,
             blacklist: '',
-            audio: '',
-            pings: '',
+            audio: 'https://images.wikia.nocookie.net/monchbox/images/0/01/Beep-sound.ogg',
+            pings: mw.config.get('wgUserName'),
             color: 'red',
         },
         state: {},
@@ -142,7 +144,7 @@
         },
         onMessage: function(model, batched) {
             if (model.attributes.name == this.name) return;
-            if (model.attributes.isInlineAlert && !this.storage['inline-alert']) return;
+            if (model.attributes.isInlineAlert && !this.storage['inline-alerts']) return;
             var entry = document.getElementById('entry-' + model.cid);
             if (!entry) return;
             this.checkPings(entry, model, batched);
@@ -154,16 +156,14 @@
             textNodes.forEach(function(node) {
                 var indexes = this.matchPings(node.textContent);
                 if (indexes.length) {
+                    if (!this.pingable(model.attributes.name)) return;
                     this.highlightMessage(entry, node, indexes);
-                    if (
-                        batched ||
-                        !this.pingable(model.attributes.name)
-                    ) return;
+                    if (batched) return;
 
                     if (!model.attributes.isInlineAlert) {
                         this.addRecentPing(model);
                     }
-                    if (this.storage.audio) {
+                    if (this.storage['audio-enabled'] && this.storage.audio) {
                         this.playAudio();
                     }
                     if (this.storage.notifications) {
@@ -257,19 +257,21 @@
                 if (!ping[3]) continue;
                 if (find) {
                     if (find == 'visible') {
-                        var models = mainRoom.model.chats.models,
-                        j = models.length,
-                        chat = mainRoom.viewDiscussion.chatDiv.get(0);
-                        while (j--) {
-                            var model = models[j],
-                            elem = document.getElementById('entry-' + model.cid);
-                            if (!elem) continue;
-                            // If it's outside the viewport, yeah it is confusing if you haven't done it 20 times
-                            var pos = -chat.scrollTop + elem.offsetHeight + elem.offsetTop;
-                            if (pos < 0) break;
-                            var match = this.createRecentPing(model);
-                            if (pos < chat.clientHeight + elem.offsetHeight && this.matchPing(ping, match)) {
-                                pings[i] = ping.slice(0, 3);
+                        if ([null, 'main', mainRoom.roomId].indexOf(mainRoom.activeRoom) != -1) {
+                            var models = mainRoom.model.chats.models,
+                            j = models.length,
+                            chat = mainRoom.viewDiscussion.chatDiv.get(0);
+                            while (j--) {
+                                var model = models[j],
+                                elem = document.getElementById('entry-' + model.cid);
+                                if (!elem) continue;
+                                // If it's outside the viewport, yeah it is confusing if you haven't done it 20 times
+                                var pos = -chat.scrollTop + elem.offsetHeight + elem.offsetTop;
+                                if (pos < 0) break;
+                                var match = this.createRecentPing(model);
+                                if (pos < chat.clientHeight + elem.offsetHeight && this.matchPing(ping, match)) {
+                                    pings[i] = ping.slice(0, 3);
+                                }
                             }
                         }
                     } else {
@@ -358,7 +360,7 @@
                 if (match) {
                     this.pings.push(new RegExp(match[1], match[2].replace('g', '') + 'g'));
                 } else {
-                    this.pings.push(line);
+                    this.pings.push(line.trim());
                 }
             }, this);
 
@@ -478,14 +480,34 @@
                                     text: this.i18n.msg('setting-label-' + option).plain()
                                 },
                                 option == 'audio' ? {
-                                    type: 'button',
+                                    type: 'div',
                                     attr: {
-                                        id: 'PingsPlayAudio'
+                                        id: 'PingsPlayFloat'
                                     },
-                                    events: {
-                                        click: this.playAudio.bind(this)
-                                    },
-                                    text: this.i18n.msg('play-audio-button').plain()
+                                    children: [
+                                        {
+                                            type: 'button',
+                                            attr: {
+                                                id: 'PingsPlayAudio'
+                                            },
+                                            events: {
+                                                click: this.playAudio.bind(this)
+                                            },
+                                            text: this.i18n.msg('play-audio-button').plain()
+                                        },
+                                        {
+                                            type: 'input',
+                                            attr: $.extend({
+                                                type: 'checkbox',
+                                                id: 'PingsSettingCheckbox-audio-enabled'
+                                            }, this.storage['audio-enabled'] ? {
+                                                checked: true
+                                            } : null),
+                                            events: {
+                                                input: this.onChangeSetting.bind(this, 'audio-enabled')
+                                            }
+                                        }
+                                    ]
                                 } : {},
                                 {
                                     type: 'input',
@@ -535,6 +557,7 @@
                         });
                         break;
                     case 'checkbox':
+                        if (option == 'audio-enabled') break;
                         objects.push({
                             type: 'div',
                             classes: ['pings-setting', 'pings-checkbox'],
@@ -646,6 +669,7 @@
             var elem = document.getElementById('entry-' + model.cid),
             $chat = mainRoom.viewDiscussion.chatDiv;
             if (!elem) return;
+            mainRoom.showRoom('main');
             $chat.animate({
                 scrollTop: elem.offsetTop + elem.clientHeight / 2 - $chat.height() / 2
             }, 500);
@@ -893,3 +917,4 @@
         ]
     });
 })();
+

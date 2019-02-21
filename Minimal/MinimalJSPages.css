@@ -1,0 +1,24 @@
+.article-table td {
+    padding: 1px;
+}
+
+.article-table {
+    width: 100%;
+}
+
+.content-review-module-submit {
+    padding: 0 4px;
+    margin-left: 6px;
+}
+
+tr > td:first-child > a {
+    padding-left: 5px;
+}
+
+tbody > tr > td:not(:first-child) {
+    text-align: center;
+}
+
+tr > td:not(:first-child) > a {
+    padding-left: 3px;
+}

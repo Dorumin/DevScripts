@@ -1,0 +1,198 @@
+/* General */
+.link-previews {
+    flex-direction: column;
+    display: flex;
+}
+
+.link-previews > .ChatLinkPreview-image {
+    margin-bottom: 4px;
+}
+
+.ChatLinkPreview-image {
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.ChatLinkPreview-page.thumbnail .ChatLinkPreview-content {
+    display: flex;
+}
+
+.ChatLinkPreview-image.thumbnail {
+    margin-left: 20px;
+    flex-shrink: 0;
+}
+
+/* Modals */
+.ChatLinkPreview-modal {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgba(0, 0, 0, .9);
+    animation: CLP-modal-animation 200ms ease;
+    z-index: 1;
+}
+
+.ChatLinkPreview-modalImage {
+    animation: CLP-modalImage-animation 200ms cubic-bezier(0.5, 0.5, 0.0, 1.2);
+    border-radius: 5px;
+    user-select: none;
+}
+
+.ChatLinkPreview-modal.fading-out {
+    animation-duration: 150ms;
+    animation-direction: reverse;
+    opacity: .5;
+    visibility: hidden;
+}
+
+.ChatLinkPreview-modal.fading-out .ChatLinkPreview-modalImage {
+    animation-duration: 150ms;
+    animation-direction: reverse;
+}
+
+/* Pages */
+.ChatLinkPreview-page {
+    display: inline-flex;
+    background: rgba(0, 0, 0, .05);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-right: auto;
+    margin-bottom: 4px;
+}
+
+.ChatLinkPreview-page::before {
+    content: '';
+    width: 4px;
+    background: rgba(0, 0, 0, .2);
+}
+
+.ChatLinkPreview-content {
+    padding: 6px 10px;
+}
+
+.ChatLinkPreview-content .sitename {
+    font-size: 10px;
+    opacity: .8;
+}
+
+.ChatLinkPreview-content .sitename-link {
+    color: inherit;
+}
+
+.ChatLinkPreview-content .title {
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.ChatLinkPreview-content .description {
+    font-size: 12px;
+}
+
+/* Videos */
+.ChatLinkPreview-preview {
+    position: relative;
+}
+
+.ChatLinkPreview-controlsWrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    cursor: pointer;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    top: 0;
+}
+
+.ChatLinkPreview-controls {
+    background: rgba(0, 0, 0, .6);
+    padding: 8px;
+    border-radius: 20px;
+}
+
+.ChatLinkPreview-controls svg {
+    fill: white;
+    height: 14px;
+    opacity: .6;
+    transition: opacity 200ms linear;
+}
+
+.ChatLinkPreview-controls svg:hover {
+    opacity: 1;
+}
+
+.ChatLinkPreview-controls svg[data-id="wds-icons-play"] {
+    transform: scaleY(1.2) scaleX(.9);
+}
+
+/* Animations */
+@keyframes CLP-modal-animation {
+    from {
+        opacity: 0;
+        visibility: visible;
+    }
+    to {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+@keyframes CLP-modalImage-animation {
+    from {
+        transform: scale(.5);
+    }
+    to {
+        background: scale(1);
+    }
+}
+
+/* Generic */
+.reset-animation {
+    animation: none;
+}
+
+/* Custom site colors */
+/* Wikia Cyan */
+.ChatLinkPreview-page[data-site$="wikia.org"]::before,
+.ChatLinkPreview-page[data-site$="wikia.com"]::before,
+.ChatLinkPreview-page[data-site$="fandom.com"]::before {
+    background: #00d6d6;
+}
+
+/* YouTube Red */
+.ChatLinkPreview-page[data-site="youtube.com"]::before,
+.ChatLinkPreview-page[data-site="youtu.be"]::before {
+    background: red;
+}
+
+/* Facebook Blue */
+.ChatLinkPreview-page[data-site="facebook.com"]::before,
+.ChatLinkPreview-page[data-site="fb.me"]::before {
+    background: #4267b2;
+}
+
+/* Discord Blurple */
+.ChatLinkPreview-page[data-site="discordapp.com"]::before {
+    background: #8193db;
+}
+
+/* Reddit Orange */
+.ChatLinkPreview-page[data-site="reddit.com"]::before {
+    background: #ff4500;
+}
+
+/* Imgur Green */
+.ChatLinkPreview[data-site$="imgur.com"]::before {
+    background: #1bb76e;
+}
+
+/* GitHub Super-Dark Blue */
+.ChatLinkPreview-page[data-site$="github.com"]::before {
+    background: #1e2327;
+}

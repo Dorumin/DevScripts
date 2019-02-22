@@ -1,39 +1,7 @@
 /**
- * Authors: Soap Shadow, Dorumin, Sophiedp, Speedit (Wikia Rail OnLoad), Bobogoobo (v1.3.0)
- * Version 3.0.0
- *
- * This is a custom discord integrator widget.
- * It allows the widget to show member roles as well as displaying custom graphics and text.
- * 
- * Reference: https://dev.wikia.com/wiki/MediaWiki:AddRailModule/code.js
- * Reference: https://mlp.wikia.com/wiki/MediaWiki:Common.js/CustomDiscordIntegrator.js
- * Reference: https://warframe.wikia.com/wiki/MediaWiki:CustomDiscordWidget.js
- * 
- * Version History
- * v1.0.0 - Initial
- * v1.1.0 - Put the widget into a custom wikia rail module, which also adds a svg icon
- *          for the title and sub text about server guidelines.
- *        - Add bots role.
- * v1.2.0 -d Add support for template substitution for pages which don't have the wikia rail
- *          i.e. the main page.
- * v1.3.0 - Refactor code.
- *        - Wiki specific changes.
- * v1.4.0 - Wiki specific changes.
- * v1.5.0 - Wiki specific changes.
- * v2.0.0 - Cross wiki support.
- * v3.0.0 - Rewite by Dorumin
- * 
- * MediaWiki:Custom-Discord-id the widget id
- * MediaWiki:Custom-Discord-guidelines random guidelines link for backwards compatibility
- * MediaWiki:Custom-Discord-footer Footer text that takes precedence over guidelines because it makes sense
- * MediaWiki:Custom-Discord-header: Lets you customize the header title that usually says "Community Chat"
- * MediaWiki:Custom-Discord-online Text for users online, with $1 being the number
- * MediaWiki:Custom-Discord-order: Order for the roles, just a consequence of having infinite role slots. Default role always last
- * MediaWiki:Custom-Discord-join Join button text
- * MediaWiki:Custom-Discord-roles- prefix for role ID lists
- * MediaWiki:Custom-Discord-roles-Admin "Admin" role, header text is everything after "roles-"
+ * @version 3.0.0
  */
- 
+
 (function() {
     window.Discord = $.extend({
         $rail: $('#WikiaRail'),
@@ -54,6 +22,8 @@
                 case 'messages':
                     if (this.messages.id) {
                         this.fetchWidgetData(this.messages.id).done(this.handleWidgetData.bind(this));
+                    } else {
+                        this.onload();
                     }
                     break;
             }
@@ -86,7 +56,7 @@
             dev.i18n = dev.i18n || {};
             dev.i18n.overrides = dev.i18n.overrides || {};
             dev.i18n.overrides.Discord = dev.i18n.overrides.Discord || {};
- 
+
             if (data.query) {
                 for (var pageId in data.query.pages) {
                     var page = data.query.pages[pageId],
@@ -96,7 +66,7 @@
                         var split = title.split('-'),
                         key = split.pop();
                         title = split[0];
- 
+
                         this.messages[title] = this.messages[title] || {};
                         this.messages[title][key] = content;
                     } else {
@@ -172,7 +142,10 @@
                 ]
             }
         },
-        buildWidget: function(data, theme) {
+        avatar: function(id, hash, ext, size) {
+            return 'https://cdn.discordapp.com/avatars/' + id + '/' + hash + '.' + ext + '?size=' + size;
+        },
+        buildWidget: function(data) {
             return dev.ui({
                 children: [
                     this.buildTitle(data),
@@ -186,7 +159,7 @@
                                 children: [
                                     {
                                         type: 'div',
-                                        classes: ['widget', 'widget-theme-' + (theme || this.messages.theme)],
+                                        classes: ['widget', 'widget-theme-' + (data.theme || this.messages.theme)],
                                         children: [
                                             this.buildHeader(data),
                                             this.buildBody(data),
@@ -203,9 +176,7 @@
         buildTitle: function(data) {
             return {
                 type: 'div',
-                attr: {
-                    id: 'title'
-                },
+                classes: ['title-container'],
                 children: [
                     {
                         type: 'h2',
@@ -215,8 +186,7 @@
                             this.i18n.msg('header', data.name).plain()
                         ]
                     }
-                ],
-                condition: this.messages.header
+                ]
             }
         },
         buildHeader: function(data) {
@@ -241,6 +211,7 @@
             }
         },
         buildBody: function(data) {
+            /* TODO: Channels? */
             var roles = this.groupMemberRoles(data.members);
             return {
                 type: 'div',
@@ -264,10 +235,11 @@
                         },
                         text: name
                     }
-                ].concat(members.map(this.buildUserChip.bind(this)))
+                ].concat(members.map(this.buildUserChip.bind(this, data)))
             };
         },
-        buildUserChip: function(member) {
+        buildUserChip: function(data, member) {
+            // TODO: GIF avatars
             return {
                 type: 'div',
                 classes: ['widget-member'],
@@ -279,7 +251,7 @@
                             {
                                 type: 'img',
                                 attr: {
-                                    src: 'https://cdn.discordapp.com/avatars/' + member.id + '/' + member.avatar + '.jpg?size=64'
+                                    src: this.avatar(member.id, member.avatar, 'jpg', 64)
                                 }
                             },
                             {
@@ -295,7 +267,7 @@
                     }
                 ],
                 events: {
-                    click: this.showMemberModal.bind(this, member)
+                    click: this.showMemberModal.bind(this, data, member)
                 }
             };
         },
@@ -328,7 +300,7 @@
             indices = {},
             defaultRole = this.i18n.msg('users').plain(),
             roles = Object.keys(this.messages.roles);
- 
+
             if (this.messages.order) {
                 var order = this.messages.order.split(',').map(function(name) {
                     return name.trim();
@@ -341,17 +313,17 @@
                     return aIndex - bIndex;
                 });
             }
- 
+
             for (var i in roles) {
                 var role = roles[i];
                 indices[role] = grouped.push([ role, [] ]) - 1;
             }
             indices[defaultRole] = grouped.push([ defaultRole, [] ]) - 1;
- 
+
             for (var i in members) {
                 var member = members[i],
                 assigned = false;
- 
+
                 for (var role in this.messages.roles) {
                     var ids = this.messages.roles[role];
                     if (ids.includes(member.id)) {
@@ -361,39 +333,40 @@
                         break;
                     }
                 }
- 
+
                 if (!assigned) {
                     grouped[indices[defaultRole]][1].push(member);
                 }
             }
             return grouped;
         },
-        showMemberModal: function(member) {
+        showMemberModal: function(data, member) {
+            var game = member.game || {};
             $.showCustomModal(member.nick || member.username,
                 dev.ui({
                     type: 'div',
                     children: [
                         {
                             type: 'div',
-                            classes: ['avatar-container'],
+                            classes: ['avatar-container', 'loading'],
                             children: [
                                 {
                                     type: 'a',
                                     classes: ['avatar-link'],
                                     attr: {
-                                        href: 'https://cdn.discordapp.com/avatars/' + member.id + '/' + member.avatar + '.png?size=2048',
+                                        href: this.avatar(member.id, member.avatar, 'png', 2048),
                                         target: '_blank'
                                     },
                                     children: [
                                         {
                                             type: 'img',
-                                            classes: ['avatar', 'loading'],
+                                            classes: ['avatar'],
                                             attr: {
-                                                src: 'https://cdn.discordapp.com/avatars/' + member.id + '/' + member.avatar + '.jpg?size=256'
+                                                src: this.avatar(member.id, member.avatar, 'jpg', 256)
                                             },
                                             events: {
                                                 load: function() {
-                                                    this.classList.remove('loading');
+                                                    this.parentElement.parentElement.classList.remove('loading');
                                                 }
                                             }
                                         }
@@ -424,22 +397,30 @@
                                 {
                                     type: 'div',
                                     classes: ['playing'],
-                                    html: this.i18n.msg('playing', member.game && member.game.name).parse(),
-                                    condition: member.game
+                                    html: this.i18n.msg(
+                                        game.name == 'Spotify'
+                                            ? 'listening'
+                                            : 'playing',
+                                        game.name
+                                    ).parse(),
+                                    condition: game.name
                                 }
                             ]
                         }
                     ]
                 }),
                 {
-                    id: 'Discord-member-modal',
-                    width: 'invalid so that the CSS can take over lol'
+                    id: 'discord-member-modal',
+                    width: 'invalid so that the CSS can take over lol',
+                    callback: function($modal) {
+                        $modal.addClass('discord-member-modal-theme-' + (data.theme || this.messages.theme));
+                    }.bind(this)
                 }
             );
         },
         addToRail: function() {
             if (!this.railWidgetData) return;
- 
+
             var module = dev.ui({
                 type: 'section',
                 classes: ['rail-module'],
@@ -447,9 +428,9 @@
                     this.buildWidget(this.railWidgetData)
                 ]
             }),
-            $ads = $("#top-right-boxad-wrapper, #NATIVE_TABOOLA_RAIL").last(),
+            $ads = $('#top-right-boxad-wrapper, #NATIVE_TABOOLA_RAIL').last(),
             $jsrt = $('.content-review-module');
- 
+
             if ($ads.exists()) {
                 $ads.after(module);
             } else if ($jsrt.exists()) {
@@ -463,29 +444,30 @@
             theme = elem.getAttribute('data-theme') || this.messages.theme;
             if (!id) return;
             this.fetchWidgetData(id).then(function(data) {
-                $(elem).append(this.buildWidget(data, theme));
+                data.theme = theme;
+                $(elem).append(this.buildWidget(data));
             });
         },
         init: function() {
             this.mapMessages();
- 
+
             this.addToRail();
- 
-            $('.CustomDiscordIntegrator').each(this.replaceWidget.bind(this));
+
+            $('.DiscordWidget').each(this.replaceWidget.bind(this));
         }
     }, window.Discord);
- 
+
     // Resources and hooks
     if (Discord.$rail.hasClass('loaded')) {
         Discord.onload();
     } else {
         Discord.$rail.on('afterLoad.rail', Discord.onload.bind(Discord));
     }
- 
+
     mw.hook('dev.ui').add(Discord.onload.bind(Discord));
     mw.hook('dev.i18n').add(Discord.onload.bind(Discord, 'i18n'));
     mw.loader.using('mediawiki.api').then(Discord.onload.bind(Discord, 'api'));
- 
+
     importArticles({
         type: 'script',
         articles: [
@@ -493,12 +475,12 @@
             'u:dev:MediaWiki:UI-js/code.js'
         ]
     });
- 
+
     var style = importArticle({
         type: 'style',
         article: 'u:dev:MediaWiki:Discord.css'
     })[0];
- 
+
     if (style) {
         style.onload = Discord.onload.bind(Discord);
     } else {

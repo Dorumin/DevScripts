@@ -290,57 +290,57 @@ div.discord-widget * {
 }
 
 /* User modal stuff */
-#Discord-member-modal {
+#discord-member-modal {
     text-align: center;
     width: 300px;
 }
 
-#Discord-member-modal .avatar-container {
+#discord-member-modal .avatar-container {
     display: flex;
     justify-content: center;
 }
 
-#Discord-member-modal .avatar {
+#discord-member-modal .avatar {
     width: 140px;
     height: 140px;
     border-radius: 50%;
     border: none;
 }
 
-#Discord-member-modal .avatar-container .avatar-link {
+#discord-member-modal .avatar-container .avatar-link {
     position: relative;
 }
 
-#Discord-member-modal > h1 {
+#discord-member-modal > h1 {
     margin-right: 0;
     display: block;
     right: 0;
     left: 0;
 }
 
-#Discord-member-modal .username {
+#discord-member-modal .username {
     font-size: 18px;
     font-weight: 600;
 }
 
-#Discord-member-modal .discriminator {
+#discord-member-modal .discriminator {
     font-size: 16px;
     font-weight: normal;
 }
 
-#Discord-member-modal .playing {
+#discord-member-modal .playing {
     margin-top: 6px;
     font-size: 14px;
 }
 
-#Discord-member-modal .playing strong,
-#Discord-member-modal .playing b {
+#discord-member-modal .playing strong,
+#discord-member-modal .playing b {
     font-weight: 700;
 }
 
 /* Loading animation */
-#Discord-member-modal .avatar-container.loading .avatar-link::before,
-#Discord-member-modal .avatar-container.loading .avatar-link::after {
+#discord-member-modal .avatar-container.loading .avatar-link::before,
+#discord-member-modal .avatar-container.loading .avatar-link::after {
     content: '';
     position: absolute;
     height: 10px;
@@ -350,7 +350,7 @@ div.discord-widget * {
     animation: spinner-wandering-cubes 1.8s infinite ease-in-out;
 }
 
-#Discord-member-modal .avatar-container.loading .avatar-link::after {
+#discord-member-modal .avatar-container.loading .avatar-link::after {
     animation-delay: -.9s;
 }
 
@@ -437,12 +437,12 @@ div.discord-widget * {
 }
 
 /* User modal */
-#Discord-member-modal .avatar-container.loading .avatar-link::before,
-#Discord-member-modal .avatar-container.loading .avatar-link::after {
+#discord-member-modal .avatar-container.loading .avatar-link::before,
+#discord-member-modal .avatar-container.loading .avatar-link::after {
     background-color: #7289da;
 }
 
-#Discord-member-modal .discriminator {
+#discord-member-modal .discriminator {
     color: rgba(0, 0, 0, .6);
 }
 

@@ -1,8 +1,10 @@
 /**
  * @version 3.0.0
  */
-
+ 
 (function() {
+    if (window.Discord && Discord.init) return;
+ 
     window.Discord = $.extend({
         $rail: $('#WikiaRail'),
         // Resource managing
@@ -56,7 +58,7 @@
             dev.i18n = dev.i18n || {};
             dev.i18n.overrides = dev.i18n.overrides || {};
             dev.i18n.overrides.Discord = dev.i18n.overrides.Discord || {};
-
+ 
             if (data.query) {
                 for (var pageId in data.query.pages) {
                     var page = data.query.pages[pageId],
@@ -66,7 +68,7 @@
                         var split = title.split('-'),
                         key = split.pop();
                         title = split[0];
-
+ 
                         this.messages[title] = this.messages[title] || {};
                         this.messages[title][key] = content;
                     } else {
@@ -142,8 +144,9 @@
                 ]
             }
         },
-        avatar: function(id, hash, ext, size) {
-            return 'https://cdn.discordapp.com/avatars/' + id + '/' + hash + '.' + ext + '?size=' + size;
+        avatar: function(member, ext, size) {
+            if (!member.avatar) return member.avatar_url;
+            return 'https://cdn.discordapp.com/avatars/' + member.id + '/' + member.avatar + '.' + ext + '?size=' + size;
         },
         buildWidget: function(data) {
             return dev.ui({
@@ -152,6 +155,7 @@
                     {
                         type: 'div',
                         classes: ['discord-widget-container'],
+                        style: data.size || {},
                         children: [
                             {
                                 type: 'div',
@@ -183,7 +187,10 @@
                         classes: ['title', 'has-icon'],
                         children: [
                             this.logo(),
-                            this.i18n.msg('header', data.name).plain()
+                            {
+                                type: 'span',
+                                html: this.i18n.msg('header', data.name).parse()
+                            }
                         ]
                     }
                 ]
@@ -221,7 +228,8 @@
         },
         buildRoleContainer: function(data, role) {
             var name = role[0],
-            members = role[1];
+            members = role[1],
+            defaultRole = role[2];
             return {
                 type: 'div',
                 classes: ['widget-role-container'],
@@ -230,10 +238,12 @@
                     {
                         type: 'div',
                         classes: ['widget-role-name'],
-                        attr: {
+                        attr: $.extend({
                             'data-name': name
-                        },
-                        text: name
+                        }, defaultRole ? {
+                            'data-default': 'true'
+                        } : {}),
+                        html: name
                     }
                 ].concat(members.map(this.buildUserChip.bind(this, data)))
             };
@@ -251,7 +261,7 @@
                             {
                                 type: 'img',
                                 attr: {
-                                    src: this.avatar(member.id, member.avatar, 'jpg', 64)
+                                    src: this.avatar(member, 'jpg', 64)
                                 }
                             },
                             {
@@ -289,7 +299,7 @@
                             href: data.instant_invite,
                             target: '_blank'
                         },
-                        text: this.i18n.msg('join').plain()
+                        html: this.i18n.msg('join').parse()
                     }
                 ]
             };
@@ -300,7 +310,11 @@
             indices = {},
             defaultRole = this.i18n.msg('users').plain(),
             roles = Object.keys(this.messages.roles);
-
+ 
+            members.sort(function(a, b) {
+                return (a.nick || a.username).localeCompare(b.nick || b.username);
+            });
+ 
             if (this.messages.order) {
                 var order = this.messages.order.split(',').map(function(name) {
                     return name.trim();
@@ -313,17 +327,17 @@
                     return aIndex - bIndex;
                 });
             }
-
+ 
             for (var i in roles) {
                 var role = roles[i];
                 indices[role] = grouped.push([ role, [] ]) - 1;
             }
-            indices[defaultRole] = grouped.push([ defaultRole, [] ]) - 1;
-
+            indices[defaultRole] = grouped.push([ defaultRole, [], true ]) - 1;
+ 
             for (var i in members) {
                 var member = members[i],
                 assigned = false;
-
+ 
                 for (var role in this.messages.roles) {
                     var ids = this.messages.roles[role];
                     if (ids.includes(member.id)) {
@@ -333,7 +347,7 @@
                         break;
                     }
                 }
-
+ 
                 if (!assigned) {
                     grouped[indices[defaultRole]][1].push(member);
                 }
@@ -354,7 +368,7 @@
                                     type: 'a',
                                     classes: ['avatar-link'],
                                     attr: {
-                                        href: this.avatar(member.id, member.avatar, 'png', 2048),
+                                        href: this.avatar(member, 'png', 2048),
                                         target: '_blank'
                                     },
                                     children: [
@@ -362,7 +376,7 @@
                                             type: 'img',
                                             classes: ['avatar'],
                                             attr: {
-                                                src: this.avatar(member.id, member.avatar, 'jpg', 256)
+                                                src: this.avatar(member, 'jpg', 256)
                                             },
                                             events: {
                                                 load: function() {
@@ -420,7 +434,7 @@
         },
         addToRail: function() {
             if (!this.railWidgetData) return;
-
+ 
             var module = dev.ui({
                 type: 'section',
                 classes: ['rail-module'],
@@ -430,7 +444,7 @@
             }),
             $ads = $('#top-right-boxad-wrapper, #NATIVE_TABOOLA_RAIL').last(),
             $jsrt = $('.content-review-module');
-
+ 
             if ($ads.exists()) {
                 $ads.after(module);
             } else if ($jsrt.exists()) {
@@ -441,33 +455,43 @@
         },
         replaceWidget: function(_, elem) {
             var id = elem.getAttribute('data-id') || this.messages.id,
-            theme = elem.getAttribute('data-theme') || this.messages.theme;
+            theme = elem.getAttribute('data-theme') || this.messages.theme,
+            // TODO: Make adaptive chip orientation based on width and how many avatars can fit in a row
+            width = elem.getAttribute('data-width'),
+            height = elem.getAttribute('data-height');
             if (!id) return;
             this.fetchWidgetData(id).then(function(data) {
                 data.theme = theme;
-                $(elem).append(this.buildWidget(data));
-            });
+                data.size = {};
+                if (width) {
+                    data.size.width = width;
+                }
+                if (height) {
+                    data.size.height = height;
+                }
+                elem.appendChild(this.buildWidget(data));
+            }.bind(this));
         },
         init: function() {
             this.mapMessages();
-
+ 
             this.addToRail();
-
+ 
             $('.DiscordWidget').each(this.replaceWidget.bind(this));
         }
     }, window.Discord);
-
+ 
     // Resources and hooks
     if (Discord.$rail.hasClass('loaded')) {
         Discord.onload();
     } else {
         Discord.$rail.on('afterLoad.rail', Discord.onload.bind(Discord));
     }
-
+ 
     mw.hook('dev.ui').add(Discord.onload.bind(Discord));
     mw.hook('dev.i18n').add(Discord.onload.bind(Discord, 'i18n'));
     mw.loader.using('mediawiki.api').then(Discord.onload.bind(Discord, 'api'));
-
+ 
     importArticles({
         type: 'script',
         articles: [
@@ -475,12 +499,12 @@
             'u:dev:MediaWiki:UI-js/code.js'
         ]
     });
-
+ 
     var style = importArticle({
         type: 'style',
         article: 'u:dev:MediaWiki:Discord.css'
     })[0];
-
+ 
     if (style) {
         style.onload = Discord.onload.bind(Discord);
     } else {

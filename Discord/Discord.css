@@ -44,7 +44,7 @@ div.discord-widget * {
     background-color: transparent;
     line-height: 1;
     height: 400px;
-    width: 300px;
+    width: 280px;
     margin-right: 10px;
 }
 
@@ -123,8 +123,8 @@ div.discord-widget * {
     display: flex;
     flex-shrink: 0;
     font-size: 12px;
-    font-weight: 550;
-    height: 30px;
+    font-weight: 650;
+    height: 33px;
     justify-content: center;
     opacity: 1;
     transition: ease-out 0.5s;
@@ -145,7 +145,7 @@ div.discord-widget * {
     flex: 1;
     overflow-x: hidden;
     overflow-y: auto;
-    padding: 15px;
+    padding: 12px 8px;
 }
 
 /* Widget role container */
@@ -419,7 +419,8 @@ div.discord-widget * {
 /* Join button */
 .discord-widget .widget-btn-connect {
     color: #e1e1e1;
-    background-color: rgba(255, 255, 255, .05)
+    background-color: rgba(255, 255, 255, .05);
+    border: 1px solid #fff;
 }
 
 .discord-widget .widget-btn-connect:hover {
@@ -475,9 +476,9 @@ div.discord-widget * {
 
 /* Join button */
 .discord-widget .widget-theme-light .widget-btn-connect {
-    color: #000;
+    color: #3a3a3a;
     background-color: transparent;
-    border: 1px solid #3b3b3b;
+    border: 1px solid #3a3a3a;
 }
 
 .discord-widget .widget-theme-light .widget-btn-connect:hover {

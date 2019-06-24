@@ -1,10 +1,10 @@
 /**
  * @version 3.0.0
  */
- 
+
 (function() {
     if (window.Discord && Discord.init) return;
- 
+
     window.Discord = $.extend({
         $rail: $('#WikiaRail'),
         // Resource managing
@@ -58,7 +58,7 @@
             dev.i18n = dev.i18n || {};
             dev.i18n.overrides = dev.i18n.overrides || {};
             dev.i18n.overrides.Discord = dev.i18n.overrides.Discord || {};
- 
+
             if (data.query) {
                 for (var pageId in data.query.pages) {
                     var page = data.query.pages[pageId],
@@ -68,14 +68,14 @@
                         var split = title.split('-'),
                         key = split.pop();
                         title = split[0];
- 
+
                         this.messages[title] = this.messages[title] || {};
                         this.messages[title][key] = content;
                     } else {
                         this.messages[title] = this.messages[title] || content;
                         dev.i18n.overrides.Discord[title] = dev.i18n.overrides.Discord[title] || content;
                     }
-                    delete this.defaults[title]
+                    delete this.defaults[title];
                 }
             }
             for (var key in this.defaults) {
@@ -142,7 +142,7 @@
                         }
                     }
                 ]
-            }
+            };
         },
         avatar: function(member, ext, size) {
             if (!member.avatar) return member.avatar_url;
@@ -181,6 +181,7 @@
             return {
                 type: 'div',
                 classes: ['title-container'],
+                condition: data.header != '0',
                 children: [
                     {
                         type: 'h2',
@@ -194,7 +195,7 @@
                         ]
                     }
                 ]
-            }
+            };
         },
         buildHeader: function(data) {
             return {
@@ -296,7 +297,7 @@
                         type: 'a',
                         classes: ['widget-btn-connect'],
                         attr: {
-                            href: data.instant_invite,
+                            href: data.invite || this.messages.invite || data.instant_invite,
                             target: '_blank'
                         },
                         html: this.i18n.msg('join').parse()
@@ -310,11 +311,11 @@
             indices = {},
             defaultRole = this.i18n.msg('users').plain(),
             roles = Object.keys(this.messages.roles);
- 
+
             members.sort(function(a, b) {
                 return (a.nick || a.username).localeCompare(b.nick || b.username);
             });
- 
+
             if (this.messages.order) {
                 var order = this.messages.order.split(',').map(function(name) {
                     return name.trim();
@@ -327,17 +328,17 @@
                     return aIndex - bIndex;
                 });
             }
- 
+
             for (var i in roles) {
                 var role = roles[i];
                 indices[role] = grouped.push([ role, [] ]) - 1;
             }
             indices[defaultRole] = grouped.push([ defaultRole, [], true ]) - 1;
- 
+
             for (var i in members) {
                 var member = members[i],
                 assigned = false;
- 
+
                 for (var role in this.messages.roles) {
                     var ids = this.messages.roles[role];
                     if (ids.includes(member.id)) {
@@ -347,7 +348,7 @@
                         break;
                     }
                 }
- 
+
                 if (!assigned) {
                     grouped[indices[defaultRole]][1].push(member);
                 }
@@ -433,8 +434,8 @@
             );
         },
         addToRail: function() {
-            if (!this.railWidgetData) return;
- 
+            if (!this.railWidgetData || !this.$rail.exists()) return;
+
             var module = dev.ui({
                 type: 'section',
                 classes: ['rail-module'],
@@ -444,7 +445,7 @@
             }),
             $ads = $('#top-right-boxad-wrapper, #NATIVE_TABOOLA_RAIL').last(),
             $jsrt = $('.content-review-module');
- 
+
             if ($ads.exists()) {
                 $ads.after(module);
             } else if ($jsrt.exists()) {
@@ -458,7 +459,9 @@
             theme = elem.getAttribute('data-theme') || this.messages.theme,
             // TODO: Make adaptive chip orientation based on width and how many avatars can fit in a row
             width = elem.getAttribute('data-width'),
-            height = elem.getAttribute('data-height');
+            height = elem.getAttribute('data-height'),
+            invite = elem.getAttribute('data-invite'),
+            header = elem.getAttribute('data-header');
             if (!id) return;
             this.fetchWidgetData(id).then(function(data) {
                 data.theme = theme;
@@ -469,29 +472,41 @@
                 if (height) {
                     data.size.height = height;
                 }
-                elem.appendChild(this.buildWidget(data));
+                if (invite) {
+                    data.invite = invite;
+                } else {
+                    data.invite = data.instant_invite;
+                }
+                if (header) {
+                    data.header = header;
+                }
+                $(elem).empty().append(this.buildWidget(data));
             }.bind(this));
+        },
+        replaceWidgets: function($container) {
+            $container.find('.DiscordWidget').each(this.replaceWidget.bind(this));
         },
         init: function() {
             this.mapMessages();
- 
+
             this.addToRail();
- 
-            $('.DiscordWidget').each(this.replaceWidget.bind(this));
+
+            this.replaceWidgets(mw.util.$content);
+            mw.hook('wikipage.content').add(this.replaceWidgets.bind(this));
         }
     }, window.Discord);
- 
+
     // Resources and hooks
-    if (Discord.$rail.hasClass('loaded')) {
+    if (!Discord.$rail.exists() || Discord.$rail.hasClass('loaded')) {
         Discord.onload();
     } else {
         Discord.$rail.on('afterLoad.rail', Discord.onload.bind(Discord));
     }
- 
+
     mw.hook('dev.ui').add(Discord.onload.bind(Discord));
     mw.hook('dev.i18n').add(Discord.onload.bind(Discord, 'i18n'));
     mw.loader.using('mediawiki.api').then(Discord.onload.bind(Discord, 'api'));
- 
+
     importArticles({
         type: 'script',
         articles: [
@@ -499,15 +514,16 @@
             'u:dev:MediaWiki:UI-js/code.js'
         ]
     });
- 
+
     var style = importArticle({
         type: 'style',
         article: 'u:dev:MediaWiki:Discord.css'
     })[0];
- 
+
     if (style) {
         style.onload = Discord.onload.bind(Discord);
     } else {
         Discord.onload();
     }
 })();
+

@@ -205,9 +205,9 @@ div.discord-widget * {
 }
 
 /* Float member names to the left when they're on the right side */
-.discord-widget .widget-member:nth-child(7n-1) .widget-member-name,
-.discord-widget .widget-member:nth-child(7n) .widget-member-name,
-.discord-widget .widget-member:nth-child(7n+1) .widget-member-name {
+.discord-widget:not(.resolved-columns) .widget-member:nth-child(7n-1) .widget-member-name,
+.discord-widget:not(.resolved-columns) .widget-member:nth-child(7n) .widget-member-name,
+.discord-widget:not(.resolved-columns) .widget-member:nth-child(7n+1) .widget-member-name {
     padding: 0 32px 0 8px;
     right: 4px;
 }

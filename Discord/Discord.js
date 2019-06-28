@@ -45,13 +45,27 @@
         getMessages: function() {
             this.api.get({
                 action: 'query',
-                generator: 'allpages',
-                gapnamespace: 8,
-                gapprefix: 'Custom-Discord-',
-                gaplimit: 'max',
-                prop: 'revisions',
-                rvprop: 'content'
-            }).then(this.handleMessages.bind(this));
+                list: 'allpages',
+                apnamespace: 8,
+                apprefix: 'Custom-Discord-',
+                aplimit: 'max'
+            })
+            .then(this.onPagesLoaded.bind(this))
+            .then(this.handleMessages.bind(this));
+        },
+        onPagesLoaded: function(data) {
+            var first = data.query.allpages[0],
+            index = first ? first.title.indexOf(':') + 1 : null,
+            allpages = data.query.allpages.map(function(page) {
+                return page.title.slice(index);
+            });
+
+            return this.api.get({
+                action: 'query',
+                meta: 'allmessages',
+                amlang: mw.config.get('wgUserLanguage'),
+                ammessages: allpages.join('|')
+            });
         },
         handleMessages: function(data) {
             window.dev = window.dev || {};
@@ -60,10 +74,13 @@
             dev.i18n.overrides.Discord = dev.i18n.overrides.Discord || {};
 
             if (data.query) {
-                for (var pageId in data.query.pages) {
-                    var page = data.query.pages[pageId],
-                    title = page.title.slice('MediaWiki:Custom-Discord-'.length),
-                    content = page.revisions[0]['*'];
+                for (var i in data.query.allmessages) {
+                    var message = data.query.allmessages[i],
+                    title = message.name.slice('Custom-Discord-'.length),
+                    content = message['*'];
+
+                    if (message.missing === '') continue;
+
                     if (title.indexOf('-') != -1) {
                         var split = title.split('-'),
                         key = split.pop();
@@ -148,6 +165,14 @@
             if (!member.avatar) return member.avatar_url;
             return 'https://cdn.discordapp.com/avatars/' + member.id + '/' + member.avatar + '.' + ext + '?size=' + size;
         },
+        getRandomId: function(prefix, i) {
+            var charset = '1234567890abcdef',
+            len = charset.length;
+            while (i--) {
+                prefix += charset[Math.floor(Math.random() * len)];
+            }
+            return prefix;
+        },
         buildWidget: function(data) {
             return dev.ui({
                 children: [
@@ -155,6 +180,9 @@
                     {
                         type: 'div',
                         classes: ['discord-widget-container'],
+                        attr: {
+                            id: this.getRandomId('discord-widget-', 64)
+                        },
                         style: data.size || {},
                         children: [
                             {
@@ -234,6 +262,9 @@
             return {
                 type: 'div',
                 classes: ['widget-role-container'],
+                attr: {
+                    'data-name': name
+                },
                 condition: members.length,
                 children: [
                     {
@@ -261,6 +292,7 @@
                         children: [
                             {
                                 type: 'img',
+                                classes: ['widget-member-avatar-img'],
                                 attr: {
                                     src: this.avatar(member, 'jpg', 64)
                                 }
@@ -360,6 +392,7 @@
             $.showCustomModal(member.nick || member.username,
                 dev.ui({
                     type: 'div',
+                    classes: ['discord-member-modal-content'],
                     children: [
                         {
                             type: 'div',
@@ -436,23 +469,26 @@
         addToRail: function() {
             if (!this.railWidgetData || !this.$rail.exists()) return;
 
-            var module = dev.ui({
+            var widget = this.buildWidget(this.railWidgetData),
+            railModule = dev.ui({
                 type: 'section',
-                classes: ['rail-module'],
+                classes: ['rail-module', 'discord-module'],
                 children: [
-                    this.buildWidget(this.railWidgetData)
+                    widget
                 ]
             }),
             $ads = $('#top-right-boxad-wrapper, #NATIVE_TABOOLA_RAIL').last(),
             $jsrt = $('.content-review-module');
 
             if ($ads.exists()) {
-                $ads.after(module);
+                $ads.after(railModule);
             } else if ($jsrt.exists()) {
-                $jsrt.after(module);
+                $jsrt.after(railModule);
             } else {
-                this.$rail.prepend(module);
+                this.$rail.prepend(railModule);
             }
+
+            this.onRenderedWidget(railModule);
         },
         replaceWidget: function(_, elem) {
             var id = elem.getAttribute('data-id') || this.messages.id,
@@ -480,8 +516,56 @@
                 if (header) {
                     data.header = header;
                 }
-                $(elem).empty().append(this.buildWidget(data));
+                var widget = this.buildWidget(data);
+                $(elem).empty().append(widget);
+
+                this.onRenderedWidget(elem);
             }.bind(this));
+        },
+        onRenderedWidget: function(widget) {
+            var container = widget.querySelector('.discord-widget-container'),
+            discord = container.querySelector('.discord-widget'),
+            body = discord.querySelector('.widget-body'),
+            largest = Array.from(body.children).sort(this.sortRoleContainers.bind(this))[0];
+            if (!largest) return;
+
+            var members = largest.querySelectorAll('.widget-member'),
+            initial = members[0].offsetTop,
+            count = 0;
+
+            for (var i = 0; i < members.length; i++) {
+                if (members[i].offsetTop > initial) break;
+                count++;
+            }
+            
+            discord.classList.add('resolved-columns');
+
+            this.addCSS(this.createNameDirectionStyles(count, container.id));
+        },
+        sortRoleContainers: function(a, b) {
+            return b.children.length - a.children.length;
+        },
+        addCSS: function(styles) {
+            mw.util.addCSS(styles);
+        },
+        createNameDirectionStyles: function(count, id) {
+            var half = Math.floor(count / 2),
+            i = half,
+            selectors = [];
+
+            while (i--) {
+                selectors.push(this.createDirectionSelector(count, id, i - half + 2));
+            }
+
+            return selectors.join(',\n') + '{\n\tpadding: 0 32px 0 8px;\n\tright: 4px;\n}';
+        },
+        createDirectionSelector: function(count, id, half) {
+            var n = half == 0
+                ? ''
+                : half > 0
+                    ? '+' + half
+                    : '-' + Math.abs(half);
+            return '#' + id + ' .widget-member:nth-child(' + count + 'n' + n + ') .widget-member-name';
         },
         replaceWidgets: function($container) {
             $container.find('.DiscordWidget').each(this.replaceWidget.bind(this));

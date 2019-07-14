@@ -139,6 +139,7 @@ div.discord-widget * {
 }
 
 .discord-widget .widget-body {
+    position: relative;
     background-position: 0 100%, 100% 100%;
     background-repeat: no-repeat, no-repeat;
     background-size: 200px 180px, 110px 130px;
@@ -340,7 +341,9 @@ div.discord-widget * {
 
 /* Loading animation */
 #discord-member-modal .avatar-container.loading .avatar-link::before,
-#discord-member-modal .avatar-container.loading .avatar-link::after {
+#discord-member-modal .avatar-container.loading .avatar-link::after,
+.discord-widget .widget-body.body-loading::before,
+.discord-widget .widget-body.body-loading::after {
     content: '';
     position: absolute;
     height: 10px;
@@ -350,7 +353,8 @@ div.discord-widget * {
     animation: spinner-wandering-cubes 1.8s infinite ease-in-out;
 }
 
-#discord-member-modal .avatar-container.loading .avatar-link::after {
+#discord-member-modal .avatar-container.loading .avatar-link::after,
+.discord-widget .widget-body.body-loading::after {
     animation-delay: -.9s;
 }
 
@@ -439,7 +443,9 @@ div.discord-widget * {
 
 /* User modal */
 #discord-member-modal .avatar-container.loading .avatar-link::before,
-#discord-member-modal .avatar-container.loading .avatar-link::after {
+#discord-member-modal .avatar-container.loading .avatar-link::after,
+.discord-widget .widget-body.body-loading::before,
+.discord-widget .widget-body.body-loading::after {
     background-color: #7289da;
 }
 

@@ -8,7 +8,7 @@
     window.Discord = $.extend({
         $rail: $('#WikiaRail'),
         // Resource managing
-        loaded: 8,
+        loaded: 7,
         onload: function(type, arg) {
             switch (type) {
                 case 'i18n':
@@ -21,13 +21,13 @@
                     this.api = new mw.Api();
                     this.getMessages();
                     break;
-                case 'messages':
-                    if (this.messages.id) {
-                        this.fetchWidgetData(this.messages.id).done(this.handleWidgetData.bind(this));
-                    } else {
-                        this.onload();
-                    }
-                    break;
+                // case 'messages':
+                //     if (this.messages.id) {
+                //         this.fetchWidgetData(this.messages.id).done(this.handleWidgetData.bind(this));
+                //     } else {
+                //         this.onload();
+                //     }
+                //     break;
             }
             if (--this.loaded) return;
             this.init();
@@ -114,7 +114,8 @@
         },
         handleWidgetData: function(data) {
             this.railWidgetData = data;
-            this.onload();
+            // this.onload();
+            this.addToRail();
         },
         // Called on init to turn the role ID lists into arrays
         mapMessages: function() {
@@ -241,18 +242,23 @@
                     {
                         type: 'span',
                         classes: ['widget-header-count'],
-                        html: this.i18n.msg('online', data.members.length).parse()
+                        condition: data.members,
+                        html: this.i18n.msg('online', data.members && data.members.length).parse()
                     }
                 ]
             }
         },
         buildBody: function(data) {
             /* TODO: Channels? */
-            var roles = this.groupMemberRoles(data.members);
+            var roles = data.members
+                ? this.groupMemberRoles(data.members)
+                : null;
             return {
                 type: 'div',
-                classes: ['widget-body'],
-                children: roles.map(this.buildRoleContainer.bind(this, data))
+                classes: ['widget-body'].concat(data.members ? [] : ['body-loading']),
+                children: data.members
+                    ? roles.map(this.buildRoleContainer.bind(this, data))
+                    : []
             };
         },
         buildRoleContainer: function(data, role) {
@@ -328,6 +334,7 @@
                     {
                         type: 'a',
                         classes: ['widget-btn-connect'],
+                        condition: data.invite || this.messages.invite || data.instant_invite,
                         attr: {
                             href: data.invite || this.messages.invite || data.instant_invite,
                             target: '_blank'
@@ -466,10 +473,16 @@
                 }
             );
         },
-        addToRail: function() {
-            if (!this.railWidgetData || !this.$rail.exists()) return;
+        addToRail: function(data) {
+            if (!this.$rail.exists()) return;
 
-            var widget = this.buildWidget(this.railWidgetData),
+            $('.discord-module').remove();
+
+            if (!this.railWidgetData) {
+                this.fetchWidgetData(this.messages.id).then(this.handleWidgetData.bind(this));
+            }
+
+            var widget = this.buildWidget(this.railWidgetData || {}),
             railModule = dev.ui({
                 type: 'section',
                 classes: ['rail-module', 'discord-module'],
@@ -570,13 +583,75 @@
         replaceWidgets: function($container) {
             $container.find('.DiscordWidget').each(this.replaceWidget.bind(this));
         },
+        getHeight: function(elem) {
+            var style = getComputedStyle(elem);
+            return elem.clientHeight + parseInt(style.marginTop) + parseInt(style.marginBottom);
+        },
+        reflow: function(elem, columns, force) {
+            if (this.reflowing) {
+                this.reflowing = false;
+                if (!force) {
+                    return;
+                }
+            }
+            this.reflowing = true;
+
+            var full = 0,
+            sum = 0,
+            overhead = 5,
+            children = elem.children,
+            i = children.length;
+
+            elem.style.maxHeight = '';
+
+            if (innerWidth > 1023) return;
+        
+            while (i--) {
+                full += this.getHeight(children[i]);
+            }
+        
+            var half = full / columns;
+        
+            for (var i = 0; i < children.length; i++) {
+                sum += this.getHeight(children[i]);
+                if (sum > half) {
+                    break;
+                }
+            }
+
+            elem.style.maxHeight = (sum + overhead) + 'px';
+        },
+        patchStupidRail: function() {
+            if (!this.$rail || !window.MutationObserver || navigator.maxTouchPoints === 0) return;
+
+            var rail = this.$rail.get(0);
+
+            rail.parentElement.style.columnCount = 'auto';
+
+            rail.style.display = 'flex';
+            rail.style.flexDirection = 'column';
+            rail.style.flexWrap = 'wrap';
+
+            this.reflow(rail, 2, true);
+
+            new MutationObserver(this.reflow.bind(this, rail, 2, false))
+                .observe(rail, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true
+                });
+        },
         init: function() {
             this.mapMessages();
 
-            this.addToRail();
+            if (this.messages.id) {
+                this.addToRail();
+            }
 
             this.replaceWidgets(mw.util.$content);
             mw.hook('wikipage.content').add(this.replaceWidgets.bind(this));
+
+            this.patchStupidRail();
         }
     }, window.Discord);
 

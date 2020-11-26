@@ -7,51 +7,92 @@
  * @author Dorumin
  * @author KockaAdmiralac
  */
-mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
+(function() {
     'use strict';
     var config = mw.config.get([
         'wgArticlePath',
         'wgContentLanguage',
         'wgFormattedNamespaces',
         'wgNamespaceNumber',
-        'wgUserGroups'
+        'wgUserGroups',
+        'wgVersion'
     ]);
     if (
         window.AjaxDeleteLoaded ||
-        !/sysop|content-moderator|vstf|staff|helper/.test(config.wgUserGroups.join())
+        (
+            !$('#ca-delete').length &&
+            !/sysop|content-moderator|content-volunteer|staff|helper|wiki-manager|content-team-member|soap/.test(config.wgUserGroups.join())
+        )
     ) {
         return;
     }
     window.AjaxDeleteLoaded = true;
-    if (!window.dev || !window.dev.i18n) {
-        importArticle({
-            type: 'script',
-            article: 'u:dev:MediaWiki:I18n-js/code.js'
-        });
-    }
-    window.AjaxDelete = $.extend({
-        check: {
-            watch: true,
-            talk: true,
-            subpages: false,
-            protect: false
-        },
+    importArticles({
+        type: 'script',
+        articles: [
+            'u:dev:MediaWiki:I18n-js/code.js',
+            'u:dev:MediaWiki:Modal.js'
+        ]
+    });
+    var AjaxDelete = {
+        config: window.AjaxDelete || {},
         undelete: ['Undelete'],
+        toLoad: 2,
+        preload: function() {
+            if (--this.toLoad === 0) {
+                $.when(
+                    window.dev.i18n.loadMessages('AjaxDelete'),
+                    mw.loader.using(['mediawiki.api', 'mediawiki.Title'])
+                ).then($.proxy(this.init, this));
+            }
+        },
         init: function(i18n) {
             this.i18n = i18n;
-            // Legacy configuration support
-            if (this.autoCheckWatch !== undefined) {
-                this.check.watch = this.autoCheckWatch;
-            }
+            this.acw = typeof this.config.autoCheckWatch === 'undefined' ?
+                mw.user.options.get('watchdeletion') :
+                this.config.autoCheckWatch;
             this.api = new mw.Api();
-            this.buildReasons();
+            this.createModal();
+            this.buildDeleteReasons();
             this.fetchUndeleteAliases();
-            $(document).click(this.click.bind(this));
-            if ([-1, 1201, 2001].indexOf(config.wgNamespaceNumber) === -1) {
-                require(['Mousetrap'], this.bindShortcut.bind(this));
+            $(document).click($.proxy(this.click, this));
+            if (
+                [-1, 1201, 2001].indexOf(config.wgNamespaceNumber) === -1 &&
+                !this.config.disableShortcut
+            ) {
+                var bindShortcut = $.proxy(this.bindShortcut, this);
+                if (config.wgVersion === '1.19.24') {
+                    require(['Mousetrap'], bindShortcut);
+                } else {
+                    // For a potentially upcoming Mousetrap library on Dev
+                    mw.hook('dev.mousetrap').add(bindShortcut);
+                }
             }
         },
-        buildReasons: function() {
+        createModal: function() {
+            this.modals = {};
+            ['delete', 'undelete'].forEach(function(action) {
+                var cap = action.charAt(0).toUpperCase() + action.substring(1);
+                var events = {};
+                events[action] = this['handle' + cap];
+                this.modals[action] = new window.dev.modal.Modal({
+                    buttons: [
+                        {
+                            event: action,
+                            id: 'Ajax' + cap + 'Button',
+                            primary: true,
+                            text: this.msg(action)
+                        }
+                    ],
+                    content: '',
+                    context: this,
+                    events: events,
+                    id: 'Ajax' + cap + 'Modal'
+                });
+                this.modals[action].create();
+            }, this);
+        },
+        buildDeleteReasons: function() {
             var dr = this.config.deleteReasons,
                 idr = this.config.imageDeleteReasons;
             this.reasons = ['', ''];
@@ -59,10 +100,10 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
                 this.fetchDeleteReasons();
             }
             if (dr) {
-                this.reasons[0] = this.makeSelectFromConfig(dr);
+                this.reasons[0] = this.makeReasonsHTML1(dr);
             }
             if (idr) {
-                this.reasons[1] = this.makeSelectFromConfig(idr);
+                this.reasons[1] = this.makeReasonsHTML1(idr);
             }
         },
         fetchUndeleteAliases: function() {
@@ -86,12 +127,12 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
                 return;
             }
             var am = d.query.allmessages;
-            this.makeSelectFromWikitext(am, 0);
-            this.makeSelectFromWikitext(am, 1);
+            this.makeReasonsHTML2(am, 0);
+            this.makeReasonsHTML2(am, 1);
         },
         cbAliasFetch: function(d) {
             var aliases = d.query.specialpagealiases;
- 
+
             for (var i in aliases) {
                 if (aliases[i].realname == 'Undelete') {
                     this.undelete = aliases[i].aliases;
@@ -112,28 +153,23 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
             }
             return $select;
         },
-        makeSelectFromConfig: function(obj) {
+        makeReasonsHTML1: function(obj) {
             var $select = this.makeReasonsHTML();
             // Don't use $.each or $.map here because if the
             // user specifies a "length" parameter in the configuration
             // and some other stuff jQuery will interpret it
             // as an array and bad things can happen
-            for (var key in obj) {
-                // Check if the object has the property and if it's not stolen from the prototype
-                // because if an user can set a length parameter, some other retard
-                // can also inherit from a class, or write their own proto functions
-                if (obj.hasOwnProperty(key)) {
-                    $select.append(
-                        $('<option>', {
-                            value: key,
-                            text: obj[key]
-                        })
-                    );
-                }
+            for (var i in obj) {
+                $select.append(
+                    $('<option>', {
+                        value: i,
+                        text: obj[i]
+                    })
+                );
             }
             return $select;
         },
-        makeSelectFromWikitext: function(obj, index) {
+        makeReasonsHTML2: function(obj, index) {
             if (this.reasons[index]) {
                 return;
             }
@@ -141,7 +177,7 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
             obj[index]['*'].trim().split('\n').forEach(function(line) {
                 line = line.trim(); // In case of \r or something dumb
                 if (line.charAt(1) === '*') {
-                    var text = line.slice(2).trim();
+                    var text = line.substring(2).trim();
                     $select.append(
                         $('<option>', {
                             value: text,
@@ -151,7 +187,7 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
                 } else if (line.charAt(0) === '*') {
                     $select.append(
                         $('<optgroup>', {
-                            label: line.slice(1).trim()
+                            label: line.substring(1).trim()
                         })
                     );
                 }
@@ -173,7 +209,7 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
             } catch(e) {
                 return;
             }
-            if (!$target.is('.ignoreAjDel') && !$('#AjaxUndeleteModal').exists()) {
+            if (!$target.is('.ignoreAjDel')) {
                 if (url.query.action === 'delete') {
                     e.preventDefault();
                     this.doDelete(url, $target);
@@ -184,9 +220,14 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
             }
         },
         isUndelete: function(url) {
+            var special = config.wgFormattedNamespaces[-1];
             return this.undelete.some(function(alias) {
-                return url.path.indexOf(mw.util.getUrl('Special:' + alias + '/')) === 0 ||
-                url.path === mw.util.getUrl('Special:' + alias) &&
+                return (
+                    url.path.indexOf(mw.util.getUrl('Special:' + alias + '/')) === 0 ||
+                    url.path.indexOf(mw.util.getUrl(special + ':' + alias + '/')) === 0 ||
+                    url.path === mw.util.getUrl('Special:' + alias) ||
+                    url.path === mw.util.getUrl(special + ':' + alias)
+                ) &&
                 url.query.target;
             }) &&
             !this.config.noUndelete &&
@@ -208,7 +249,7 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
             this.showModal([
                 $('<p>', {
                     id: 'AjaxDeleteText',
-                    text: text.plain()  
+                    text: text.plain()
                 }),
                 $('<label>', {
                     id: 'AjaxDeleteReasonLabel',
@@ -234,33 +275,12 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
             ]);
             $('#AjaxDeleteWatch').prop('checked', this.acw);
         },
-        capAction: function() {
-            return this.action.charAt(0).toUpperCase() + this.action.substring(1);
-        },
         showModal: function(elements) {
-            var cap = this.capAction();
-            $.showCustomModal(
-                this.i18n.msg('title-' + this.action, this.page).escape(),
-                $('<div>').append(elements).html(),
-                {
-                    id: 'Ajax' + cap + 'Modal',
-                    buttons: [
-                        {
-                            id: 'Ajax' + cap + 'Button',
-                            defaultButton: true,
-                            message: this.i18n.msg(this.action).escape(),
-                            handler: $.proxy(this['handle' + cap], this)
-                        },
-                        {
-                            id: 'Ajax' + cap + 'CancelButton',
-                            defaultButton: true,
-                            message: this.i18n.msg('cancel').escape(),
-                            handler: $.proxy(this.close, this)
-                        }
-                    ]
-                }
-            );
-            // User that wanted to delete something would probably
+            this.modals[this.action]
+                .setTitle(this.i18n.msg('title-' + this.action, this.page).plain())
+                .setContent($('<div>').append(elements).html())
+                .show();
+            // User who wanted to delete something would probably
             // want these focused
             var $reason = $('#AjaxDeleteCustomReason, #AjaxUndeleteReason');
             if ($('#AjaxDeleteReasonSelect option').length < 2) {
@@ -269,11 +289,15 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
                 $('#AjaxDeleteReasonSelect').focus();
             }
             // When Enter is pressed, execute the deletion
-            $reason.keydown(this.keydown);
+            $reason.keydown($.proxy(this.keydown, this));
         },
-        keydown: function(e) {
-            if (e.which === 13 || e.which === 11) {
-                $('#AjaxDeleteButton, #AjaxUndeleteButton').click();
+        keydown: function(event) {
+            if (event.which === 13 || event.which === 11) {
+                if (this.action === 'delete') {
+                    this.handleDelete();
+                } else {
+                    this.handleUndelete();
+                }
             }
         },
         handleDelete: function() {
@@ -317,8 +341,8 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
                 }
             }
         },
-        cbFail: function() {
-            this.banner('error', 'ajax');
+        cbFail: function(code) {
+            this.banner('error', code || 'http');
         },
         banner: function(type, code) {
             var msg = this.action;
@@ -326,7 +350,7 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
                 msg += 'rev';
             }
             msg = this.i18n.msg(type + msg, this.page).parse() + ' ';
-            if (code === 'ajax') {
+            if (code === 'http') {
                 msg += $('<a>', {
                     href: this.action === 'delete' ?
                         mw.util.getUrl(this.page, {
@@ -338,10 +362,18 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
             } else if (code) {
                 msg += ' (' + code + ')';
             }
-            new BannerNotification(msg, type).show();
+            if (window.BannerNotification) {
+                new BannerNotification(msg, type).show();
+            } else {
+                mw.loader.using('mediawiki.notify').then(function () {
+                    mw.notify($(msg), {
+                        type: type
+                    });
+                });
+            }
         },
         close: function() {
-            $('#Ajax' + this.capAction() + 'Modal').closeModal();
+            this.modals[this.action].close();
         },
         doUndelete: function(url) {
             this.action = 'undelete';
@@ -380,10 +412,8 @@ mw.loader.using(['mediawiki.api', 'mediawiki.Title']).then(function() {
         msg: function(code) {
             return this.i18n.msg(code).plain();
         }
-    }, window.AjaxDelete);
-    mw.hook('dev.i18n').add(function(i18no) {
-        i18no.loadMessages('AjaxDelete').then(
-            $.proxy(AjaxDelete.init, AjaxDelete)
-        );
-    });
-});
+    };
+    var preload = $.proxy(AjaxDelete.preload, AjaxDelete);
+    mw.hook('dev.i18n').add(preload);
+    mw.hook('dev.modal').add(preload);
+})();

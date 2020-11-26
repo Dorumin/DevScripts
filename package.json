@@ -1,0 +1,23 @@
+{
+  "name": "devscripts",
+  "version": "1.0.0",
+  "description": "dev dump",
+  "bin": {
+    "devscripts": "build.js"
+  },
+  "scripts": {
+    "watch": "node bin/watchcss.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dorumin/DevScripts.git"
+  },
+  "author": "Doru",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Dorumin/DevScripts/issues"
+  },
+  "dependencies": {
+    "chokidar": "^3.3.1"
+  }
+}

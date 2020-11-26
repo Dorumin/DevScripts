@@ -1,0 +1,30 @@
+#AjaxBlockReasonInput, #AjaxUnblockReasonInput, #AjaxBlockExpiryInput {
+    width: 90%;
+}
+
+#AaxBlockReasonSelect, #AjaxBlockExpirySelect {
+    margin-left: 5px;
+}
+
+.AjaxBlockExpiryWrapper, .AjaxBlockReasonWrapper {
+    margin-bottom: 5px;
+}
+
+.qdmodal-button {
+    cursor: pointer !important;
+}
+
+#AjaxBlockLinks {
+    overflow: visible;
+}
+
+input:not(:checked) + label[for="AjaxBlockRangeBlock"] + div {
+    max-height: 0;
+    opacity: 0;
+    transition: opacity 0.2s ease-out, max-height 0.2s cubic-bezier(1, 0, 1, 0);
+}
+
+input:checked + label[for="AjaxBlockRangeBlock"] + div {
+    max-height: 20px;
+    transition: opacity 0.2s ease-in;
+}

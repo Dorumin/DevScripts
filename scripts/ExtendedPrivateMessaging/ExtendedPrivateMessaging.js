@@ -5,12 +5,17 @@
  *
  * @author Dorumin
  */
- 
+
 (function xpm_init() {
 
+    var wg = mw.config.get([
+        'wgCanonicalSpecialPageName',
+        'wgUserName',
+        'wgScript'
+    ]);
     // Scoping and double runs
     if (
-        wgCanonicalSpecialPageName !== 'Chat' ||
+        wg.wgCanonicalSpecialPageName !== 'Chat' ||
         (
             window.ExtendedPrivateMessaging &&
             window.ExtendedPrivateMessaging.init
@@ -18,9 +23,12 @@
     ) return;
 
     // Check mainRoom defined
-    importArticle({
+    importArticles({
         type: 'script',
-        article: 'u:dev:Chat-js.js'
+        articles: [
+            'u:dev:Chat-js.js',
+            'u:dev:MediaWiki:I18n-js/code.js'
+        ]
     });
     if (!window.mainRoom || !window.mainRoom.isInitialized) {
         mw.hook('dev.chat.render').add(
@@ -31,24 +39,17 @@
 
     var i18n;
 
-    if (!window.dev || !window.dev.i18n) { // Import i18n-js, if needed
-        importArticle({
-            type: 'script',
-            article: 'u:dev:MediaWiki:I18n-js/code.js'
-        });
-    }
-    
     // Import styles
     importArticle({
         type: 'style',
-        article: 'u:dev:MediaWiki:ExtendedPrivateMessaging/code.css'
+        article: 'u:dev:MediaWiki:ExtendedPrivateMessaging.css'
     });
 
     /********** BLOCK PM INLINE ALERTS**********/
-   
+
     // Query the API for the peeps that blocked your PMs
     function update_blocked_by() {
-        $.get('/index.php?action=ajax&rs=ChatAjax&method=getPrivateBlocks&kek=' + Date.now()).then(function(d) {
+        $.get(wg.wgScript + '?action=ajax&rs=ChatAjax&method=getPrivateBlocks&kek=' + Date.now()).then(function(d) {
             var blockedBy = d.blockedByChatUsers.sort();
             if (blockedBy.join('|') == xpm.blockedBy.join('|')) return;
             var changed = blockedBy.concat(xpm.blockedBy).filter(function(name, i, ref) {
@@ -62,7 +63,7 @@
             });
             if (!changed.length) return;
             changed.map(function(user) {
-                var r = [user, wgUserName].sort();
+                var r = [user, wg.wgUserName].sort();
                 r.isBlocked = blockedBy.indexOf(user) != -1;
                 return r;
             }).filter(function(users) {
@@ -70,20 +71,20 @@
             }).forEach(update_chat);
         });
     }
-   
+
     function update_chat(users) {
         var room = xpm.privateChats[users.join('|')];
         if (!room || users.length > 2) return;
-        var them = users[0] == wgUserName ? users[1] : users[0],
+        var them = users[0] == wg.wgUserName ? users[1] : users[0],
         they_blocked = xpm.blockedBy.indexOf(them) != -1;
         room.model.room.set({
             blockedMessageInput: users.isBlocked
         });
         room.model.chats.add(new models.InlineAlert({
-            text: mw.message('chat-user-' + (users.isBlocked ? 'blocked' : 'allow'), they_blocked || !users.isBlocked ? them : wgUserName, they_blocked || !users.isBlocked ? wgUserName : them).escaped()
+            text: mw.message('chat-user-' + (users.isBlocked ? 'blocked' : 'allow'), they_blocked || !users.isBlocked ? them : wg.wgUserName, they_blocked || !users.isBlocked ? wg.wgUserName : them).escaped()
         }));
     }
-   
+
     function bind_events(room) {
         room.socket.on("updateUser", function(msg) {
             var data = JSON.parse(msg.data).attrs,
@@ -92,7 +93,7 @@
                 user = data.name,
                 users = room.model.privateRoom.attributes.users.sort();
             if (
-                user != wgUserName &&
+                user != wg.wgUserName &&
                 type == 'hey-i-just-met-you-and-this-is-crazy-but-heres-my-number-so-block-me-maybe'
             ) {
                 users.isBlocked = status;
@@ -104,14 +105,14 @@
                 room.customTitle = status;
                 update_header(room);
                 var members = room.model.privateRoom.attributes.users.filter(function(name) {
-                    return name != wgUserName;
+                    return name != wg.wgUserName;
                 });
                 room.model.chats.add(new models.InlineAlert({
                     text: i18n.msg('has-changed-title', user, status || mw.message('chat-private-headline', members.join(', ')).text()).escape()
                 }));
             } else if (
                 type == '@~titlesync' &&
-                user != wgUserName
+                user != wg.wgUserName
             ) {
                 if (status == true) {
                     room.socket.send(new models.SetStatusCommand({
@@ -125,7 +126,7 @@
             }
         });
     }
-   
+
     // Declare global variable for debugging
     var xpm = window.ExtendedPrivateMessaging = $.extend({
         blockedBy: mainRoom.model.blockedByUsers.models.map(function(n) {
@@ -136,7 +137,7 @@
         enableExperimentalGroupIcons: true,
         init: true
     }, window.ExtendedPrivateMessaging);
-   
+
     // Extend the private chats object
     $.each(mainRoom.chats.privates, function(i, room) {
         var u = room.model.privateRoom.attributes.users.sort();
@@ -144,7 +145,7 @@
         xpm.privateChats[u.join('|')] = room;
         bind_events(room);
     });
-   
+
     // Bind to new private rooms
     mainRoom.model.privateUsers.bind('add', function(u) {
         var room = mainRoom.chats.privates[u.attributes.roomId],
@@ -153,10 +154,10 @@
         xpm.privateChats[users.join('|')] = room;
         bind_events(room);
     });
-   
+
     // Bind to you blocking others
     mainRoom.model.blockedUsers.bind('add', function(u) {
-        var users = [u.attributes.name, wgUserName].sort(),
+        var users = [u.attributes.name, wg.wgUserName].sort(),
         room = xpm.privateChats[users.join('|')];
         if (!room) return;
         room.socket.send(new models.SetStatusCommand({
@@ -164,10 +165,10 @@
             statusState: true
         }).xport());
     });
-   
+
     // Bind to unblocking people
     mainRoom.model.blockedUsers.bind('remove', function(u) {
-        var users = [u.attributes.name, wgUserName].sort(),
+        var users = [u.attributes.name, wg.wgUserName].sort(),
         room = xpm.privateChats[users.join('|')];
         if (!room) return;
         room.socket.send(new models.SetStatusCommand({
@@ -175,7 +176,7 @@
             statusState: false
         }).xport());
     });
-   
+
     // Periodically check for new users who blocked you
     setInterval(update_blocked_by, 2500);
 
@@ -245,7 +246,7 @@
     function generate_avatar_collection(users) {
         return new Promise(function(res) {
             users = users.filter(function(name) {
-                return name != wgUserName;
+                return name != wg.wgUserName;
             });
             var images = users.map(function(name) {
                 var user = mainRoom.model.users.findByName(name);
@@ -315,7 +316,7 @@
 
     function update_header(room) {
         var users = room.model.privateRoom.attributes.users.filter(function(name) {
-            return name != wgUserName;
+            return name != wg.wgUserName;
         }),
         header = document.querySelector('#ChatHeader .private');
         if (!header) return;
@@ -335,14 +336,14 @@
                 header_handler(room, users);
             };
         }
-        
+
         var splotch = document.getElementById('MsgCount_' + room.roomId);
         if (!splotch) return;
-        var username = 
+        var username =
             splotch
                 .previousElementSibling.previousElementSibling
                 .firstChild;
-        
+
         username.textContent = room.customTitle || users.join(', ');
     }
 
@@ -393,7 +394,7 @@
         header.appendChild(set);
         header.appendChild(cross);
         header.classList.add('no-pointer');
-        
+
         input.focus();
     }
 
@@ -405,7 +406,7 @@
             .toArray();
 
         if (users.length) {
-            var with_main = users.concat([wgUserName]).sort();
+            var with_main = users.concat([wg.wgUserName]).sort();
             if (!xpm.privateChats[with_main.join('|')]) {
                 mainRoom.openPrivateChat(users);
             }
@@ -419,7 +420,7 @@
 
         var picker = document.getElementById('GroupPickerInfo'),
         rail = document.getElementById('Rail');
-        
+
         if (!picker) {
             return;
         }
@@ -430,7 +431,7 @@
         picker.style.animationDirection = 'reverse';
         picker.offsetHeight; /* trigger reflow */
         picker.style.animationName = null;
-        
+
         rail.classList.remove('hovered');
 
         setTimeout(function() {
@@ -446,13 +447,13 @@
         picker  = doc.createElement('div'),
         start   = doc.createElement('div'),
         cross   = doc.createElement('div');
-        
+
         if (doc.body.classList.contains('picking-group-pm')) return;
 
         picker.id = 'GroupPickerInfo';
         start.className = 'start';
         cross.className = 'cross';
-        
+
         start.textContent = i18n.msg('help').plain();
         cross.textContent = '✖';
 
@@ -475,7 +476,7 @@
         $this = $(this);
 
         if (!picker) return;
-        
+
         e.preventDefault();
         setTimeout(mainRoom.viewUsers.hideMenu, 0);
         $this.toggleClass('selected');
@@ -491,11 +492,11 @@
         var id = user.attributes.roomId,
         room = mainRoom.chats.privates[id],
         members = room.model.privateRoom.attributes.users.filter(function(name) {
-            return name != wgUserName;
+            return name != wg.wgUserName;
         });
-        
+
         if (members.length == 1) return;
-        
+
         room.model.room.bind('change', function() {
             if (this.attributes.blockedMessageInput) {
                 this.set({
@@ -518,7 +519,7 @@
             .addClass('group')
             .removeAttr('id')
             .find('img');
-        
+
         if (xpm.enableExperimentalGroupIcons && window.Promise &&  !!window.HTMLCanvasElement) {
             generate_avatar_collection(members).then(function(url) {
                 $img
@@ -530,7 +531,7 @@
                 .attr('src', xpm.groupIcon)
                 .removeAttr('srcset');
         }
-        
+
         $elem.find('.username').get(0).firstChild.textContent = members.join(', ');
     }
 
@@ -555,7 +556,7 @@
                 users.length > 2 &&
                 users.indexOf(name) !== -1 &&
                 last.attributes.isInlineAlert &&
-                last.attributes.text == mw.message('chat-user-joined', name).escaped()                
+                last.attributes.text == mw.message('chat-user-joined', name).escaped()
             ) {
                 chat.model.chats.add(new models.InlineAlert({
                     text: mw.message('chat-user-joined', name).escaped(),
@@ -575,7 +576,7 @@
                 users.length > 2 &&
                 users.indexOf(name) !== -1 &&
                 last.attributes.isInlineAlert &&
-                last.attributes.text == mw.message('chat-user-parted', name).escaped()                
+                last.attributes.text == mw.message('chat-user-parted', name).escaped()
             ) {
                 chat.model.chats.add(new models.InlineAlert({
                     text: mw.message('chat-user-parted', name).escaped(),
@@ -591,7 +592,7 @@
             lib.loadMessages('ExtendedPrivateMessaging').done(function(lang) {
                 i18n = lang;
                 i18n.useUserLang();
-                
+
                 // Add button
                 new chat.Button({
                     name: 'ExtendedPrivateMessaging',
@@ -600,7 +601,7 @@
                         click: open_group_selection
                     }
                 });
-                
+
                 // Bind mainRoom events
                 mainRoom.model.users.bind('add', on_user_add);
                 mainRoom.model.users.bind('remove', on_user_remove);
@@ -611,19 +612,19 @@
                         // Code: Yes.
                         return true;
                     }
-    
+
                     if (e.event.shiftKey) {
                         e.event.preventDefault();
-    
+
                         remove_selection();
                         open_group_selection();
-    
+
                         $('#WikiChatList .User[data-user="' + e.name + '"]').click();
                     } else {
                         ref(e);
                     }
                 });
-    
+
                 // Group PM tooltip
                 mainRoom.viewUsers.bind('mainListClick', function() {
                     var li = document.querySelector('#UserStatsMenu .private');
@@ -631,12 +632,12 @@
                         li.title = i18n.msg('tooltip').plain();
                     }
                 });
-    
+
                 // Just one isn't enough, because Chat, that's why
                 mainRoom.viewUsers.bind('privateListClick', room_change_handler);
                 mainRoom.model.room.bind('change', $.debounce(0, room_change_handler));
                 mainRoom.model.privateUsers.bind('add', new_room_handler);
-    
+
                 // Bind DOM events
                 $('#WikiChatList').on('click', '.User', user_click_handler);
             });
@@ -673,7 +674,7 @@
 
     mainRoom.viewUsers._callbacks.mainListClick[0] = $.proxy(function(obj) {
         var user = this.model.users.findByName(obj.name);
-        var userMain = this.model.users.findByName(wgUserName);
+        var userMain = this.model.users.findByName(wg.wgUserName);
         var userYouAreBlockedBy = this.model.blockedByUsers.findByName(obj.name);
         // <my code>
         var userPrivate = Object.keys(mainRoom.chats.privates).find(function(key) {
@@ -702,8 +703,8 @@
         }
         this.viewUsers.showMenu(obj.target, actions);
     }, mainRoom);
-    
-    
+
+
     mainRoom.model.privateUsers.findByName = function(name) {
         var match;
         this.find(function(user) {
@@ -723,7 +724,7 @@
         });
         return match;
     };
-    
+
     // This isn't even a bug from XPM, but hey, while we're at it, better fix this too.
     mainRoom.baseOpenPrivateRoom = function(data, active) {
         this.chats.privates[data.get('roomId')] = new NodeRoomController(data.get('roomId'));
@@ -731,7 +732,7 @@
         this.chats.privates[data.get('roomId')].model.privateRoom = data;
         var users = data.get('users');
         for (var i in users) {
-            if (users[i] != wgUserName) {
+            if (users[i] != wg.wgUserName) {
                 // <my code>
                 var user = this.model.users.findByName(users[i]);
                 if (!user) continue;
@@ -751,9 +752,10 @@
             }
         }
     };
-    
-    // Look mommy, it's a *hack* until someone comes up with something better 
+
+    // Look mommy, it's a *hack* until someone comes up with something better
     if (navigator.vendor && navigator.vendor.indexOf('Apple') > -1 && navigator.userAgent && !navigator.userAgent.match('CriOS')) {
         mw.util.addCSS('#Rail { z-index: auto; } #GroupPickerInfo { z-index: 2; }');
     }
 })();
+

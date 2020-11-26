@@ -5,6 +5,10 @@
 (function() {
     if (window.Discord && Discord.init) return;
 
+    var blankImgUrl = mw.config.get('wgBlankImgUrl');
+    var canNativelyLazyLoadImages = window.HTMLImageElement.prototype.hasOwnProperty('loading');
+    var shouldPolyfillLazyLoadImages = !canNativelyLazyLoadImages && window.hasOwnProperty('IntersectionObserver');
+
     window.Discord = $.extend({
         $rail: $('#WikiaRail'),
         // Resource managing
@@ -128,7 +132,7 @@
             return {
                 type: 'svg',
                 attr: {
-                    viewBox: '0 0 1000 800',
+                    viewBox: '0 0 28 20',
                     height: '18',
                     width: '18'
                 },
@@ -137,26 +141,7 @@
                         type: 'path',
                         attr: {
                             // Come on, isn't there a saner way to do this?
-                            d: 'M 361.9857,0.00138389\
-                                C 348.73055,0.05478389 239.07459,3.1670339 123.39327,89.124664 123.39327,89.124664 0,311.06297 0,584.4136\
-                                c 0,0 71.978249,123.39208 261.35281,129.39038 0,0 31.70511,-37.7037 57.41206,-70.26582\
-                                C 209.93876,610.97599 168.80785,543.28361 168.80785,543.28361\
-                                c 0,0 8.5708,5.99726 23.99498,14.56626 0.85689,0 1.71122,0.85558 3.42502,1.7125 2.57069,1.71377\
-                                5.1422,2.57081 7.7129,4.28459 21.42246,11.99658 42.84423,21.42368 62.5529,29.13581 35.13283,14.56729\
-                                77.12215,27.41951 125.96536,36.84541 64.26736,11.9966 139.67306,16.28044 221.93532,0.85625\
-                                40.27424,-7.71208 81.40794,-18.85053 124.25286,-36.84541 29.99142,-11.13969 63.40925,-27.41914\
-                                98.54205,-50.55541 0,0 -42.84417,69.40888 -155.09786,101.11413 25.70697,31.70521 56.55581,68.54998\
-                                56.55581,68.54998 C 928.02173,706.94949 1000,583.55668 1000,584.4136 1000,311.06297 876.60671,89.124664\
-                                876.60671,89.124664 754.07028,-2.5634661 636.67349,0.00803389 636.67349,0.00803389\
-                                L 624.67932,13.718014\
-                                C 770.35209,57.419834 838.04548,121.6888 838.04548,121.6888 748.92802,73.702484 661.52634,49.707644 580.121,40.281764\
-                                c -61.69669,-6.85519 -120.82499,-5.13937 -173.09576,1.71581 -5.14137,0 -9.42484,0.85563 -14.56623,1.7125\
-                                -29.99144,3.42762 -102.82721,13.70953 -194.51535,53.98375 -31.70523,13.710366 -50.55871,23.994976\
-                                -50.55871,23.994976 0,0 70.26568,-67.697276 224.50739,-111.399106 L 363.32318,0.00803389\
-                                c 0,0 -0.4538,-0.0102 -1.33748,-0.007\
-                                z M 340.18778,316.20414 c 48.8432,0 88.26098,41.98669 87.40413,94.25746 0,52.27084 -38.56093,94.2608\
-                                -87.40413,94.2608 -47.98632,0 -87.40413,-41.98996 -87.40413,-94.2608 0,-52.27077 38.56091,-94.25746 87.40413,-94.25746 z m 312.76778,0\
-                                c 47.98631,0 87.40413,41.98669 87.40413,94.25746 0,52.27084 -38.56089,94.2608 -87.40413,94.2608 -47.9863,0 -87.40413,-41.98996 -87.40413,-94.2608 0,-52.27077 38.56091,-94.25746 87.40413,-94.25746 z'
+                            d: 'm20.6644 20s-0.863-1.0238-1.5822-1.9286c3.1404-0.8809 4.339-2.8333 4.339-2.8333-0.9828 0.6429-1.9178 1.0953-2.7568 1.4048-1.1986 0.5-2.3493 0.8333-3.476 1.0238-2.3014 0.4286-4.411 0.3095-6.2089-0.0238-1.36649-0.2619-2.54114-0.6429-3.52402-1.0238-0.55137-0.2143-1.15069-0.4762-1.75-0.8095-0.07192-0.0477-0.14384-0.0715-0.21575-0.1191-0.04795-0.0238-0.07192-0.0476-0.09589-0.0714-0.43151-0.2381-0.67124-0.4048-0.67124-0.4048s1.15069 1.9048 4.19521 2.8095c-0.71918 0.9048-1.60617 1.9762-1.60617 1.9762-5.29794-0.1667-7.31164-3.619-7.31164-3.619 0-7.6666 3.45205-13.8808 3.45205-13.8808 3.45206-2.5714 6.73635-2.49997 6.73635-2.49997l0.2397 0.285711c-4.31509 1.23808-6.30481 3.11902-6.30481 3.11902s0.52739-0.28572 1.41438-0.69047c2.56507-1.11904 4.60273-1.42856 5.44183-1.49999 0.1438-0.02381 0.2637-0.04762 0.4075-0.04762 1.4623-0.190471 3.1164-0.23809 4.8425-0.04762 2.2773 0.26191 4.7226 0.92857 7.2157 2.2857 0 0-1.8938-1.7857-5.9692-3.02378l0.3356-0.380948s3.2843-0.0714279 6.7363 2.49997c0 0 3.4521 6.21423 3.4521 13.8808 0 0-2.0377 3.4523-7.3356 3.619zm-11.1473-11.1189c-1.36644 0-2.4452 1.19044-2.4452 2.64284s1.10274 2.6428 2.4452 2.6428c1.36648 0 2.44518-1.1904 2.44518-2.6428 0.024-1.4524-1.0787-2.64284-2.44518-2.64284zm8.74998 0c-1.3664 0-2.4452 1.19044-2.4452 2.64284s1.1028 2.6428 2.4452 2.6428c1.3665 0 2.4452-1.1904 2.4452-2.6428s-1.0787-2.64284-2.4452-2.64284z',
                         }
                     }
                 ]
@@ -175,7 +160,7 @@
             return prefix;
         },
         buildWidget: function(data) {
-            return dev.ui({
+            var widget = dev.ui({
                 children: [
                     this.buildTitle(data),
                     {
@@ -205,6 +190,25 @@
                     }
                 ]
             });
+            if (shouldPolyfillLazyLoadImages) {
+                var avatarLazyLoadIntersectionObserver = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (entry) {
+                        if (entry.intersectionRatio === 1) {
+                            entry.target.src = entry.target.dataset.src; delete entry.target.dataset.src;
+                            entry.target.srcset = entry.target.dataset.srcset; delete entry.target.dataset.srcset;
+                            avatarLazyLoadIntersectionObserver.unobserve(entry.target);
+                        }
+                    });
+                }, {
+                    root: widget.querySelector('.widget-body'),
+                    rootMargin: '100% 0%',
+                    threshold: 1
+                });
+                widget.querySelectorAll('.widget-member-avatar-img').forEach(function (img) {
+                    avatarLazyLoadIntersectionObserver.observe(img);
+                });
+            }
+            return widget;
         },
         buildTitle: function(data) {
             return {
@@ -288,6 +292,22 @@
         },
         buildUserChip: function(data, member) {
             // TODO: GIF avatars
+            var avatarAttrs = {
+                // TODO: Caculate appropriate ceilings based on effective dimensions of loaded stylesheet(s); for now we're assuming the default of 28. The [docs](https://github.com/discordapp/discord-api-docs/blob/24f892b7de66c102c0c199e41a1bbe8577eddb9f/docs/Reference.md) say this "can be any power of two between 16 and 2048" though empirically other resolutions like 20 also work.
+                src: this.avatar(member, 'png', 32),
+                srcset: this.avatar(member, 'png', 64) + ' 2x'
+            };
+
+            if (canNativelyLazyLoadImages) {
+                avatarAttrs.loading = 'lazy';
+            } else if (shouldPolyfillLazyLoadImages) {
+                avatarAttrs = {
+                    'src': blankImgUrl,
+                    'data-src': avatarAttrs.src,
+                    'data-srcset': avatarAttrs.srcset
+                };
+            }
+
             return {
                 type: 'div',
                 classes: ['widget-member'],
@@ -299,9 +319,7 @@
                             {
                                 type: 'img',
                                 classes: ['widget-member-avatar-img'],
-                                attr: {
-                                    src: this.avatar(member, 'jpg', 64)
-                                }
+                                attr: avatarAttrs
                             },
                             {
                                 type: 'span',
@@ -417,7 +435,7 @@
                                             type: 'img',
                                             classes: ['avatar'],
                                             attr: {
-                                                src: this.avatar(member, 'jpg', 256)
+                                                src: this.avatar(member, 'png', 256)
                                             },
                                             events: {
                                                 load: function() {
@@ -486,6 +504,9 @@
             railModule = dev.ui({
                 type: 'section',
                 classes: ['rail-module', 'discord-module'],
+                attr: {
+                    'data-widget-state': 'loading'
+                },
                 children: [
                     widget
                 ]
@@ -502,8 +523,10 @@
             }
 
             this.onRenderedWidget(railModule);
+            mw.hook('Discord.widget.rail').fire(railModule);
         },
         replaceWidget: function(_, elem) {
+            elem.dataset.widgetState = 'loading';
             var id = elem.getAttribute('data-id') || this.messages.id,
             theme = elem.getAttribute('data-theme') || this.messages.theme,
             // TODO: Make adaptive chip orientation based on width and how many avatars can fit in a row
@@ -550,10 +573,13 @@
                 if (members[i].offsetTop > initial) break;
                 count++;
             }
-            
+
             discord.classList.add('resolved-columns');
 
             this.addCSS(this.createNameDirectionStyles(count, container.id));
+
+            widget.dataset.widgetState = 'loaded';
+            mw.hook('Discord.widget').fire(widget);
         },
         sortRoleContainers: function(a, b) {
             return b.children.length - a.children.length;
@@ -581,7 +607,7 @@
             return '#' + id + ' .widget-member:nth-child(' + count + 'n' + n + ') .widget-member-name';
         },
         replaceWidgets: function($container) {
-            $container.find('.DiscordWidget').each(this.replaceWidget.bind(this));
+            $container.find('.DiscordWidget:not([data-widget-state])').each(this.replaceWidget.bind(this));
         },
         getHeight: function(elem) {
             var style = getComputedStyle(elem);
@@ -605,16 +631,16 @@
             elem.style.maxHeight = '';
 
             if (innerWidth > 1023) return;
-        
+
             while (i--) {
                 full += this.getHeight(children[i]);
             }
-        
-            var half = full / columns;
-        
+
+            var partition = full / columns;
+
             for (var i = 0; i < children.length; i++) {
                 sum += this.getHeight(children[i]);
-                if (sum > half) {
+                if (sum > partition) {
                     break;
                 }
             }
@@ -685,4 +711,3 @@
         Discord.onload();
     }
 })();
-

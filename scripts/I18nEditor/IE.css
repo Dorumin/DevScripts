@@ -1,0 +1,165 @@
+.I18nEdit-listingFilter legend:active {
+    margin-left: 4px;
+}
+
+.I18nEdit-listingFilter legend {
+    user-select: none;
+    transition: margin-left 100ms ease;
+}
+
+.I18nEdit-input {
+    outline: none;
+}
+
+.I18nEdit-listingFilterTitleInput {
+    width: 240px;
+    font-size: 16px;
+}
+
+.I18nEdit-hoverableListElement {
+    padding: 8px;
+    border-bottom: 1px solid #ccc;
+    cursor: pointer;
+    transition: padding 200ms ease;
+    overflow: hidden;
+}
+
+.I18nEdit-hoverableListElement:last-of-type {
+    border-color: transparent;
+}
+
+.I18nEdit-hoverableListElement:hover,
+.I18nEdit-selectedListElement {
+    padding-left: 12px;
+}
+
+.I18nEdit-details {
+    font-size: 12px;
+    color: #ccc;
+}
+
+.I18nEdit-listingFilterLanguages {
+    padding: 16px 0 0 0;
+}
+
+.I18nEdit-listingFilterLanguageChip {
+    padding: 8px 0 8px 8px;
+    margin-right: 4px;
+    background-color: rgba(0, 0, 0, .1);
+    border-radius: 18px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.I18nEdit-listingFilterAddLanguage {
+    padding-left: 0;
+    padding-right: 8px;
+}
+
+.I18nEdit-listingFilterAddLanguage::before {
+    content: '➕';
+    padding: 4px;
+    margin-right: 4px;
+    margin-left: 4px;
+    border-radius: 18px;
+    transition: background-color 200ms ease;
+    background-color: transparent;
+}
+
+.I18nEdit-listingFilterAddLanguage:hover::before {
+    background-color: rgba(0, 0, 0, .05);
+}
+
+.I18nEdit-listingFilter .autocomplete {
+    overflow: hidden;
+}
+
+.I18nEdit-listingFilterChipClose {
+    border-radius: 50%;
+    padding: 6px;
+    display: inline-flex;
+    height: 10px;
+    margin-right: 4px;
+    margin-left: 4px;
+    transition: background-color 200ms ease;
+    background-color: transparent;
+}
+
+.I18nEdit-listingFilterLanguageChip:hover .I18nEdit-listingFilterChipClose {
+    background-color: rgba(0, 0, 0, .05);
+}
+
+.I18nEdit-listingFilterChipClose::after {
+    content: '✖';
+    font-weight: bold;
+    font-family: monospace;
+    line-height: 12px;
+}
+
+.I18nEdit-listingFilterAddingLanguageInput {
+    border: none;
+    background-color: transparent;
+    border-radius: 4px;
+    display: inline-flex;
+    width: 120px;
+    margin-right: 8px;
+    outline: none;
+    padding: 2px;
+    font-size: 12px;
+}
+
+/* Tweak autocomplete position */
+.I18nEdit-listingFilter .autocomplete-container {
+    margin-top: 12px;
+}
+
+/* Language picker styles */
+.I18nEdit-pickerContent {
+    display: flex;
+}
+
+.I18nEdit-pickerColumn {
+    flex: 1;
+    padding: 8px;
+}
+
+/** List element styles **/
+.I18nEdit-hoverableListElement {
+    position: relative;
+    overflow: visible;
+}
+
+.I18nEdit-hoverableListElement::after {
+    content: '';
+    display: block;
+    position: absolute;
+    background: #00d7ff;
+    height: 2px;
+    bottom: -1px;
+    z-index: 10;
+    visibility: hidden;
+    right: 50%;
+    left: 50%;
+    transition: all 200ms ease;
+}
+
+.I18nEdit-selectedListElement::after {
+    visibility: visible;
+    left: 0;
+    right: 0;
+}
+
+/** Search function **/
+.I18nEdit-pickerToSearch {
+    padding: 8px 12px;
+}
+
+.I18nEdit-pickerSearch {
+    width: 100%;
+    padding: 2px;
+}
+
+/* Edit buttons */
+.I18nEdit-dropdownButton {
+    cursor: pointer;
+}

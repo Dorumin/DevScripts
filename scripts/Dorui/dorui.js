@@ -298,13 +298,16 @@
                     case 'style':
                         // Fancy schmancy style attributes, by converting camelCase properties to dashed-case
                         // PascalCase is converted to -dash-infix-case
-                        // Except Microsoft ones, they start with lowercase ms, like msTranform
-                        // so they have to be converted manually to -infix-case
                         for (var key in value) {
-                            var propName = key.replace(/[A-Z]/gm, function(c) {
+                            var rawValue = value[key];
+
+                            var propName = key.replace(/[A-Z]/g, function(c) {
                                 return '-' + c.toLowerCase();
                             });
 
+                            // Except Microsoft ones, they start with lowercase ms, like msTranform
+                            // so they have to be converted manually to -infix-case
+                            // why so many exceptions??
                             if (propName.slice(0, 3) == 'ms-') {
                                 propName = '-' + propName;
                             }
@@ -312,19 +315,24 @@
                             // .setProperty is great, but for whatever god forsaken reason they decided to separate the !important
                             // from the property value itself. What the fuck?
                             // Oh well, we just check if it ends with !important, and add it if so
-                            var v = value[key];
-                            var isImportant = v.trim().slice(-10) == '!important';
-                            var val = isImportant
-                                ? v.trim().slice(0, -10)
-                                : v;
+                            var isImportant = rawValue.trim().slice(-10) == '!important';
+                            var importance = isImportant ? 'important' : '';
 
-                            elem.style.setProperty(propName, val, isImportant ? 'important' : '');
+                            // Snip off any !important that we can't include in the same string
+                            var propValue = isImportant
+                                ? rawValue.trim().slice(0, -10)
+                                : rawValue;
+
+
+                            elem.style.setProperty(propName, propValue, importance);
                         }
                         break;
                     case 'attrs':
                         // For the very rare case where one of the special properties takes priority over your attribute
-                        // or for the dorui deniers
+                        // or for the dorui default property attribute deniers
                         for (var key in value) {
+                            // Map svg special attributes to their special snowflake namespaces
+                            // So far, only thing I've found this to be necessary for are <use> xlink:href attrs
                             if (isSVG && nsAttributes.hasOwnProperty(key)) {
                                 elem.setAttributeNS(
                                     nsAttributes[key],
@@ -404,6 +412,8 @@
     };
 
     // Register svg tag shorthands
+
+    // TODO: It's much simpler to use .bind, and it has no real performance impact from what I've tested
     for (var i in svgTags) {
         // Closure because JavaScript and `var`
         (function(tag) {
